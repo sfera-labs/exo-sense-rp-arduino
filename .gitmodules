@@ -1,0 +1,4 @@
+[submodule "ClosedCube_OPT3001_Arduino"]
+	path = ClosedCube_OPT3001_Arduino
+	url = https://github.com/sfera-labs/ClosedCube_OPT3001_Arduino
+	branch = master

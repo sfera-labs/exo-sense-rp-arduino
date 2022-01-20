@@ -56,6 +56,8 @@
 class ExoSenseClass
 {
   public:
+    ClosedCube_OPT3001 light;
+
     ExoSenseClass();
     void setup();
     void rs485TxEn(bool enabled);

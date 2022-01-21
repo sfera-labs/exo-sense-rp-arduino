@@ -16,7 +16,7 @@
 #ifndef ExoSense_h
 #define ExoSense_h
 
-#include "libs/ClosedCube_OPT3001_Arduino/src/ClosedCube_OPT3001.h"
+#include "libs/includes.h"
 
 #define EXOS_PIN_DI1 28
 #define EXOS_PIN_DI2 29
@@ -53,10 +53,19 @@
 
 #define EXOS_RS485 SERIAL_PORT_HARDWARE
 
+#define SGP40_DEFAULT_HUMIDITY (50.0)
+#define SGP40_DEFAULT_TEMPERATURE (25.0)
+
+#define SHT40_TICKS_FROM_PERCENT_RH(h) static_cast<uint16_t>(h * 65535 / 100);
+#define SHT40_TICKS_FROM_CELSIUS(t) static_cast<uint16_t>((t + 45) * 65535 / 175)
+
 class ExoSenseClass
 {
   public:
-    ClosedCube_OPT3001 light;
+    ClosedCube_OPT3001 opt3001;
+    SensirionI2CSht4x sht40;
+    SensirionI2CSgp40 sgp40;
+    VOCGasIndexAlgorithm voc;
 
     ExoSenseClass();
     void setup();

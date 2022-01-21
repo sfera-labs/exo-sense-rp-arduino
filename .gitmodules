@@ -2,7 +2,19 @@
 	path = libs/ClosedCube_OPT3001_Arduino
 	url = https://github.com/sfera-labs/ClosedCube_OPT3001_Arduino
 	branch = master
-[submodule "libs/arduino-sht"]
-	path = libs/arduino-sht
-	url = https://github.com/sfera-labs/arduino-sht
+[submodule "libs/arduino-core"]
+	path = libs/arduino-core
+	url = https://github.com/sfera-labs/arduino-core
+	branch = main
+[submodule "libs/arduino-i2c-sht4x"]
+	path = libs/arduino-i2c-sht4x
+	url = https://github.com/sfera-labs/arduino-i2c-sht4x
+	branch = master
+[submodule "libs/arduino-i2c-sgp40"]
+	path = libs/arduino-i2c-sgp40
+	url = https://github.com/sfera-labs/arduino-i2c-sgp40
+	branch = master
+[submodule "libs/arduino-gas-index-algorithm"]
+	path = libs/arduino-gas-index-algorithm
+	url = https://github.com/sfera-labs/arduino-gas-index-algorithm
 	branch = master

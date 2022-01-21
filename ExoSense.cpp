@@ -16,7 +16,7 @@
 #include "ExoSense.h"
 #include <Arduino.h>
 #include <Wire.h>
-#include "libs/ClosedCube_OPT3001_Arduino/src/ClosedCube_OPT3001.cpp"
+#include "libs/includes.cpp"
 
 ExoSenseClass::ExoSenseClass() {
 }
@@ -44,7 +44,13 @@ void ExoSenseClass::setup() {
   Wire.setSDA(EXOS_PIN_I2C_SDA);
   Wire.setSCL(EXOS_PIN_I2C_SCL);
 
-  light.begin(EXOS_I2C_ADDR_SENS_LIGHT);
+  opt3001.begin(EXOS_I2C_ADDR_SENS_LIGHT);
+  OPT3001_Config opt3001Cfg;
+  opt3001Cfg.rawData = 0xCC10;
+  opt3001.writeConfig(opt3001Cfg);
+
+  sht40.begin(Wire);
+  sgp40.begin(Wire);
 }
 
 void ExoSenseClass::rs485TxEn(bool enabled) {

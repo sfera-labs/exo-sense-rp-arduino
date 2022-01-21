@@ -16,7 +16,7 @@
 #ifndef ExoSense_h
 #define ExoSense_h
 
-#include "ClosedCube_OPT3001_Arduino/src/ClosedCube_OPT3001.h"
+#include "libs/ClosedCube_OPT3001_Arduino/src/ClosedCube_OPT3001.h"
 
 #define EXOS_PIN_DI1 28
 #define EXOS_PIN_DI2 29

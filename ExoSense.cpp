@@ -16,7 +16,7 @@
 #include "ExoSense.h"
 #include <Arduino.h>
 #include <Wire.h>
-#include "ClosedCube_OPT3001_Arduino/src/ClosedCube_OPT3001.cpp"
+#include "libs/ClosedCube_OPT3001_Arduino/src/ClosedCube_OPT3001.cpp"
 
 ExoSenseClass::ExoSenseClass() {
 }

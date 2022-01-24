@@ -1,6 +1,6 @@
 /*
  * ExoSenseTempRhVoc.ino - 
- *    Using Exo Sense RP's temperature, humidity and VOC sensors
+ *   Using Exo Sense RP's temperature, humidity and VOC sensors
  * 
  *   Copyright (C) 2022 Sfera Labs S.r.l. - All rights reserved.
  * 

@@ -56,8 +56,10 @@
 #define SGP40_DEFAULT_HUMIDITY (50.0)
 #define SGP40_DEFAULT_TEMPERATURE (25.0)
 
-#define SHT40_TICKS_FROM_PERCENT_RH(h) static_cast<uint16_t>(h * 65535 / 100);
+#define SHT40_TICKS_FROM_PERCENT_RH(h) static_cast<uint16_t>(h * 65535 / 100)
 #define SHT40_TICKS_FROM_CELSIUS(t) static_cast<uint16_t>((t + 45) * 65535 / 175)
+
+#define ICS43432_SAMPLE_BITS (32)
 
 class ExoSenseClass
 {
@@ -66,6 +68,7 @@ class ExoSenseClass
     SensirionI2CSht4x sht40;
     SensirionI2CSgp40 sgp40;
     VOCGasIndexAlgorithm voc;
+    I2SClass ics43432;
 
     ExoSenseClass();
     void setup();

@@ -51,6 +51,10 @@ void ExoSenseClass::setup() {
 
   sht40.begin(Wire);
   sgp40.begin(Wire);
+
+  ics43432.setSCK(EXOS_PIN_I2S_SCK);
+  ics43432.setWS(EXOS_PIN_I2S_WS);
+  ics43432.setSD(EXOS_PIN_I2S_SD);
 }
 
 void ExoSenseClass::rs485TxEn(bool enabled) {

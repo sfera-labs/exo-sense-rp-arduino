@@ -1,20 +1,20 @@
 /*
  * ExoSenseRs485Echo.ino - Using Exo Sense RP's RS-485 interface
- * 
+ *
  *   Copyright (C) 2022 Sfera Labs S.r.l. - All rights reserved.
- * 
+ *
  *   For information, see:
  *   http://www.sferalabs.cc/
- * 
+ *
  * This code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  * See file LICENSE.txt for further informations on licensing terms.
- * 
- * With this sketch Exo Sense reads whatever is sent on the RS-485 
+ *
+ * With this sketch Exo Sense reads whatever is sent on the RS-485
  * port and echoes it back.
- * 
+ *
  */
 
 #include <ExoSense.h>
@@ -25,10 +25,11 @@ byte rxBuff[MAX_LEN + 1];
 int rxIdx;
 
 void setup() {
+  // Must be called before initializing the serial port
   ExoSense.setup();
 
   /**
-   * Init port
+   * Initialize port
    * baud rate: 19200
    * data bits: 8
    * parity: none

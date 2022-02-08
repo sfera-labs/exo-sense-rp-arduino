@@ -62,4 +62,13 @@ void ExoSenseClass::rs485TxEn(bool enabled) {
   digitalWrite(EXOS_PIN_RS485_TXEN_N, enabled ? LOW : HIGH);
 }
 
+void ExoSenseClass::temperatureOffsetCompensate(float tempOffset,
+          float* temperature, float* rh) {
+  *temperature += tempOffset;
+  *rh = *rh / pow(10, 0.032 * tempOffset);
+  if (*rh > 100) {
+    *rh = 100;
+  }
+}
+
 ExoSenseClass ExoSense;

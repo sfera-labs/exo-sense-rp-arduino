@@ -73,6 +73,8 @@ class ExoSenseClass
     ExoSenseClass();
     void setup();
     void rs485TxEn(bool enabled);
+    void temperatureOffsetCompensate(float tempOffset,
+              float* temperature, float* rh);
 
   private:
 

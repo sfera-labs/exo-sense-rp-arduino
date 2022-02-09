@@ -2,6 +2,8 @@
 
 This sketch turns [Exo Sense RP](https://www.sferalabs.cc/product/exo-sense-rp/) into a standard Modbus RTU slave device with access to all its functionalities over RS-485.
 
+It requires the [Modbus RTU Slave library](https://github.com/sfera-labs/arduino-modbus-rtu-slave) to be installed.
+
 ## Configuration
 
 Before uploading the sketch, edit the configuration defines contained in the [config.h](config.h) file, together with their documentation.

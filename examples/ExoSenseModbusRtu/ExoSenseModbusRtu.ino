@@ -33,7 +33,7 @@ void setup() {
   
   attachInterrupt(digitalPinToInterrupt(EXOS_PIN_PIR), modbusPirIsr, RISING);
   
-  modbusBegin(cfg_mbUnitAddr, cfg_mbBaud, cfg_mbSerialConfig);
+  modbusBegin(CFG_MB_UNIT_ADDDR, CFG_MB_BAUDRATE, CFG_MB_SERIAL_CFG);
 
   // TODO remove ====
   //while(!Serial);
@@ -84,11 +84,11 @@ void readTempRhVoc() {
     humidity = SGP40_DEFAULT_HUMIDITY;
     temperature = SGP40_DEFAULT_TEMPERATURE;
   } else {
-    if (cfg_tempOffset != 0) {
+    if (CFG_TEMP_OFFSET != 0) {
       float userCompTemp = temperature;
       float userCompRh = humidity;
       ExoSense.temperatureOffsetCompensate(
-                  cfg_tempOffset, &userCompTemp, &userCompRh);
+                  CFG_TEMP_OFFSET, &userCompTemp, &userCompRh);
       modbusSetRh(userCompRh);
       modbusSetTemperature(userCompTemp);
     } else {

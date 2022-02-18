@@ -59,7 +59,10 @@
 #define SHT40_TICKS_FROM_PERCENT_RH(h) static_cast<uint16_t>(h * 65535 / 100)
 #define SHT40_TICKS_FROM_CELSIUS(t) static_cast<uint16_t>((t + 45) * 65535 / 175)
 
-#define ICS43432_SAMPLE_BITS (32)
+#define ICS43432_SAMPLE_FRAME_BITS (32)
+#define ICS43432_SAMPLE_DATA_BITS (24)
+#define ICS43432_BYTES_PER_SAMPLE_FRAME (ICS43432_SAMPLE_FRAME_BITS / 8)
+#define ICS43432_SENSITIVITY_DB (-26)
 
 class ExoSenseClass
 {
@@ -75,9 +78,7 @@ class ExoSenseClass
     void rs485TxEn(bool enabled);
     void temperatureOffsetCompensate(float tempOffset,
               float* temperature, float* rh);
-
-  private:
-
+    bool ics43432Begin(int bufferSize, long sampleRate);
 };
 
 extern ExoSenseClass ExoSense;

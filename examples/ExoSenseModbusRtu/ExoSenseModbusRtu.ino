@@ -19,17 +19,12 @@
 #include "modbus.h"
 #include "config.h"
 
-#define MIC_SAMPLING_FREQ 40000
-
 unsigned long lastReadTs = 0;
 
 void setup() {
   Serial.begin(9600);
   
   ExoSense.setup();
-  
-  ExoSense.ics43432.setBufferSize(40000);
-  ExoSense.ics43432.begin(I2S_MODE_MONO, MIC_SAMPLING_FREQ, ICS43432_SAMPLE_BITS);
   
   attachInterrupt(digitalPinToInterrupt(EXOS_PIN_PIR), modbusPirIsr, RISING);
   

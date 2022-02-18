@@ -71,4 +71,11 @@ void ExoSenseClass::temperatureOffsetCompensate(float tempOffset,
   }
 }
 
+bool ExoSenseClass::ics43432Begin(int bufferSize, long sampleRate) {
+  if (!ics43432.setBufferSize(bufferSize)) {
+    return false;
+  }
+  return ics43432.begin(I2S_MODE_MONO, sampleRate, ICS43432_SAMPLE_FRAME_BITS);
+}
+
 ExoSenseClass ExoSense;

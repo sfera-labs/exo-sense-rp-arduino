@@ -13,11 +13,11 @@
 #define SNDEV_PERIOD_MS_FAST      125
 #define SNDEV_PERIOD_MS_IMPULSE   35
 
-#define SNDEV_PERIOD_SAMPLES_SLOW    (SNDEV_PERIOD_MS_SLOW * SNDEV_SAMPLING_FREQ_HZ / 1000)
-#define SNDEV_PERIOD_SAMPLES_FAST    (SNDEV_PERIOD_MS_FAST * SNDEV_SAMPLING_FREQ_HZ / 1000)
-#define SNDEV_PERIOD_SAMPLES_IMPULSE (SNDEV_PERIOD_MS_IMPULSE * SNDEV_SAMPLING_FREQ_HZ / 1000)
+#define SNDEV_PERIOD_SAMPLES_SLOW    (SNDEV_PERIOD_MS_SLOW * SNDEV_SAMPLING_FREQ_HZ / 1000) // = 40000
+#define SNDEV_PERIOD_SAMPLES_FAST    (SNDEV_PERIOD_MS_FAST * SNDEV_SAMPLING_FREQ_HZ / 1000) // = 5000
+#define SNDEV_PERIOD_SAMPLES_IMPULSE (SNDEV_PERIOD_MS_IMPULSE * SNDEV_SAMPLING_FREQ_HZ / 1000) // = 1400
 
-#define SNDEV_SAMPLES_BUFF_SIZE (SNDEV_PERIOD_SAMPLES_SLOW / 8)
+#define SNDEV_SAMPLES_BUFF_SIZE   5000
 
 #define SNDEV_SAMPLE_DATA_FMT_S24LE 1
 #define SNDEV_FMT_S24LE_VAL_MAX 0x7FFFFF
@@ -26,16 +26,17 @@
 
 #define SNDEV_FREQ_BANDS 36
 
-static int _periodTimeMs = SNDEV_PERIOD_MS_SLOW;
-static int _periodSampleSize = SNDEV_PERIOD_SAMPLES_SLOW;
 static int _freqW = SNDEV_FREQ_WEIGHTING_A;
+static int _periodSampleSize;
 
 static double _samplesBuff[SNDEV_SAMPLES_BUFF_SIZE];
 static int _samplesBuffIdx;
 static int _samplesBuffMax;
+static double _samplesTimeSec;
 static double _windowFun[SNDEV_SAMPLES_BUFF_SIZE];
 static double _periodPower;
 static int _periodPowerCnt;
+static double _freqBandPow[SNDEV_FREQ_BANDS];
 static double _fftOut[SNDEV_SAMPLES_BUFF_SIZE / 2 + 1][2];
 static double _refPZ2 = pow(SNDEV_P_ZERO, 2);
 static double _refOnePa;
@@ -95,21 +96,24 @@ bool soundEvalSetMicSpecs(double sensitivityDb, int sampleBits, int dataFormat) 
 }
 
 void soundEvalSetTimeWeighting(int tw) {
+  double periodTimeMs;
   switch (tw) {
     case SNDEV_TIME_WEIGHTING_FAST:
       _periodSampleSize = SNDEV_PERIOD_SAMPLES_FAST;
-      _periodTimeMs = SNDEV_PERIOD_MS_FAST;
+      periodTimeMs = SNDEV_PERIOD_MS_FAST;
       break;
     case SNDEV_TIME_WEIGHTING_IMPULSE:
       _periodSampleSize = SNDEV_PERIOD_SAMPLES_IMPULSE;
-      _periodTimeMs = SNDEV_PERIOD_MS_IMPULSE;
+      periodTimeMs = SNDEV_PERIOD_MS_IMPULSE;
       break;
     default:
       _periodSampleSize = SNDEV_PERIOD_SAMPLES_SLOW;
-      _periodTimeMs = SNDEV_PERIOD_MS_SLOW;
+      periodTimeMs = SNDEV_PERIOD_MS_SLOW;
   }
   _samplesBuffIdx = 0;
   _samplesBuffMax = min(_periodSampleSize, SNDEV_SAMPLES_BUFF_SIZE);
+  double periodRounds = _periodSampleSize / _samplesBuffMax;
+  _samplesTimeSec = periodTimeMs / periodRounds / 1000.0;
   _periodPower = 0;
   _periodPowerCnt = 0;
   for (int i = 0; i < _samplesBuffMax; i++) {
@@ -137,23 +141,22 @@ static double getSamplesWeightedPower(double samplesPower, int samplesSize) {
   double totPwr = 0;
   double totWeightedPwr = 0;
   int freqBandIdx = 0;
-  double freqBandPow[SNDEV_FREQ_BANDS];
   
   for (int i = 0; i < SNDEV_FREQ_BANDS; i++) {
-    freqBandPow[i] = 0;
+    _freqBandPow[i] = 0;
   }
 
   fftExec(_samplesBuff, samplesSize, _fftOut);
 
   for (int i = 0; i < samplesSize / 2 + 1; i++) {
-    double freq = i / (_periodTimeMs / 1000.0);
+    double freq = i / _samplesTimeSec;
     double freqPwr = pow(_fftOut[i][0], 2) + pow(_fftOut[i][1], 2);
     
     if (freq <= SNDEV_SAMPLING_FREQ_HZ / 2) {
       if (freq > _weightingTable[freqBandIdx][SNDEV_FREQ_WEIGHTING_FREQ]) {
         freqBandIdx++;
       }
-      freqBandPow[freqBandIdx] += freqPwr;
+      _freqBandPow[freqBandIdx] += freqPwr;
       totPwr += freqPwr;
     }
   }
@@ -163,7 +166,7 @@ static double getSamplesWeightedPower(double samplesPower, int samplesSize) {
   }
 
   for (int i = 0; i < SNDEV_FREQ_BANDS; i++) {
-    double freqBandWeight = freqBandPow[i] / totPwr;
+    double freqBandWeight = _freqBandPow[i] / totPwr;
     double freqBandWeightedPow = freqBandWeight * (samplesPower / samplesSize);
     _lEqBand[i] = 10 * log10(freqBandWeightedPow) + _weightingTable[i][_freqW];
     totWeightedPwr += pow(10, _lEqBand[i] / 10);
@@ -187,8 +190,10 @@ static void processSamples() {
   
   _periodPowerCnt += _samplesBuffMax;
   _periodPower += getSamplesWeightedPower(samplesPower, _samplesBuffMax);
-
-  Serial.println("_periodPowerCnt"); // TODO remove
+  
+  Serial.println("_periodSampleSize"); // TODO remove
+  Serial.println(_periodSampleSize); // TODO remove
+  //Serial.println("_periodPowerCnt"); // TODO remove
   Serial.println(_periodPowerCnt); // TODO remove
 
   Serial.println("---"); // TODO remove
@@ -198,10 +203,11 @@ static void processSamples() {
     _periodPowerCnt = 0;
     _periodPower = 0;
 
-    Serial.println("_lEqPeriodDb"); // TODO remove
+    Serial.println(" === _lEqPeriodDb ==="); // TODO remove
     Serial.println(_lEqPeriodDb); // TODO remove
+    Serial.println(" ===================="); // TODO remove
 
-    while(1); // TODO remove
+    // delay(2000); // while(1); // TODO remove
   }
 }
 

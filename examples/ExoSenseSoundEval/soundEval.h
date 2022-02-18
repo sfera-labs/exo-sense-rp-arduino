@@ -17,7 +17,7 @@
 #define SNDEV_PERIOD_SAMPLES_FAST    (SNDEV_PERIOD_MS_FAST * SNDEV_SAMPLING_FREQ_HZ / 1000)
 #define SNDEV_PERIOD_SAMPLES_IMPULSE (SNDEV_PERIOD_MS_IMPULSE * SNDEV_SAMPLING_FREQ_HZ / 1000)
 
-#define SNDEV_SAMPLES_BUFF_SIZE (SNDEV_PERIOD_SAMPLES_SLOW / 4)
+#define SNDEV_SAMPLES_BUFF_SIZE (SNDEV_PERIOD_SAMPLES_SLOW / 8)
 
 #define SNDEV_SAMPLE_DATA_FMT_S24LE 1
 #define SNDEV_FMT_S24LE_VAL_MAX 0x7FFFFF
@@ -30,20 +30,20 @@ static int _periodTimeMs = SNDEV_PERIOD_MS_SLOW;
 static int _periodSampleSize = SNDEV_PERIOD_SAMPLES_SLOW;
 static int _freqW = SNDEV_FREQ_WEIGHTING_A;
 
-static double  _samplesBuff[SNDEV_SAMPLES_BUFF_SIZE];
+static double _samplesBuff[SNDEV_SAMPLES_BUFF_SIZE];
 static int _samplesBuffIdx;
 static int _samplesBuffMax;
-static double  _windowFun[SNDEV_SAMPLES_BUFF_SIZE];
-static double  _periodPower;
+static double _windowFun[SNDEV_SAMPLES_BUFF_SIZE];
+static double _periodPower;
 static int _periodPowerCnt;
-static double  _fftOut[SNDEV_SAMPLES_BUFF_SIZE / 2 + 1][2];
-static double  _refPZ2 = pow(SNDEV_P_ZERO, 2);
-static double  _refOnePa;
+static double _fftOut[SNDEV_SAMPLES_BUFF_SIZE / 2 + 1][2];
+static double _refPZ2 = pow(SNDEV_P_ZERO, 2);
+static double _refOnePa;
 
-static double  _lEqBand[SNDEV_FREQ_BANDS];
-static double  _lEqPeriodDb;
+static double _lEqBand[SNDEV_FREQ_BANDS];
+static double _lEqPeriodDb;
 
-static double  _weightingTable[SNDEV_FREQ_BANDS][4] = {
+static double _weightingTable[SNDEV_FREQ_BANDS][4] = {
    // freq,    A,        C,       Z
     { 6.3,     -85.4,    -21.3,    0 },
     { 8,       -77.8,    -17.7,    0 },
@@ -83,7 +83,7 @@ static double  _weightingTable[SNDEV_FREQ_BANDS][4] = {
     { 20000,   -9.3,     -11.2,    0 },
 };
 
-bool soundEvalSetMicSpecs(double  sensitivityDb, int sampleBits, int dataFormat) {
+bool soundEvalSetMicSpecs(double sensitivityDb, int sampleBits, int dataFormat) {
   if (sampleBits != 32) {
     return false;
   }
@@ -121,29 +121,33 @@ void soundEvalSetFreqWeighting(int fw) {
   _freqW = fw;
 }
 
-static void fftExec(double * in, int size, double  out[][2]) {
+static void fftExec(double * in, int size, double out[][2]) {
   // TODO
+  for (int i = 0; i < size / 2 + 1; i++) {
+    out[i][0] = 1;
+    out[i][1] = 1;
+  }
 }
 
-static double  getSamplesWeightedPower(double  samplesPower, int samplesSize) {
+static double getSamplesWeightedPower(double samplesPower, int samplesSize) {
   Serial.println("getSamplesWeightedPower()"); // TODO remove
   Serial.println(samplesPower / 1000000); // TODO remove
   Serial.println(samplesSize); // TODO remove
   
-  double  totPwr = 0;
-  double  totWeightedPwr = 0;
+  double totPwr = 0;
+  double totWeightedPwr = 0;
   int freqBandIdx = 0;
-  double  freqBandPow[SNDEV_FREQ_BANDS];
+  double freqBandPow[SNDEV_FREQ_BANDS];
   
   for (int i = 0; i < SNDEV_FREQ_BANDS; i++) {
     freqBandPow[i] = 0;
   }
 
-  fftExec(_samplesBuff, _samplesBuffMax, _fftOut);
+  fftExec(_samplesBuff, samplesSize, _fftOut);
 
   for (int i = 0; i < samplesSize / 2 + 1; i++) {
-    double  freq = i / (_periodTimeMs / 1000.0);
-    double  freqPwr = pow(_fftOut[i][0], 2) + pow(_fftOut[i][1], 2);
+    double freq = i / (_periodTimeMs / 1000.0);
+    double freqPwr = pow(_fftOut[i][0], 2) + pow(_fftOut[i][1], 2);
     
     if (freq <= SNDEV_SAMPLING_FREQ_HZ / 2) {
       if (freq > _weightingTable[freqBandIdx][SNDEV_FREQ_WEIGHTING_FREQ]) {
@@ -154,15 +158,15 @@ static double  getSamplesWeightedPower(double  samplesPower, int samplesSize) {
     }
   }
 
-  Serial.println("------------"); // TODO remove
+  if (totPwr == 0) {
+    // TODO
+  }
 
   for (int i = 0; i < SNDEV_FREQ_BANDS; i++) {
-    double  freqBandWeight = freqBandPow[i] / totPwr;
-    double  freqBandWeightedPow = freqBandWeight * (samplesPower / samplesSize);
+    double freqBandWeight = freqBandPow[i] / totPwr;
+    double freqBandWeightedPow = freqBandWeight * (samplesPower / samplesSize);
     _lEqBand[i] = 10 * log10(freqBandWeightedPow) + _weightingTable[i][_freqW];
     totWeightedPwr += pow(10, _lEqBand[i] / 10);
-
-    Serial.println(_lEqBand[i]); // TODO remove
   }
 
   return totWeightedPwr;
@@ -173,9 +177,9 @@ static void processSamples() {
   Serial.println("_samplesBuffMax"); // TODO remove
   Serial.println(_samplesBuffMax); // TODO remove
   
-  double  samplesPower = 0;
+  double samplesPower = 0;
   for (int i = 0; i < _samplesBuffMax; i++) {
-    double  pressure = _samplesBuff[i] / _refOnePa;
+    double pressure = _samplesBuff[i] / _refOnePa;
     samplesPower += pow(pressure, 2) / _refPZ2;
     /* Apply Hann window function to decrease spectral leakage */
     _samplesBuff[i] = pressure * _windowFun[i];
@@ -186,6 +190,8 @@ static void processSamples() {
 
   Serial.println("_periodPowerCnt"); // TODO remove
   Serial.println(_periodPowerCnt); // TODO remove
+
+  Serial.println("---"); // TODO remove
   
   if (_periodPowerCnt >= _periodSampleSize) {
     _lEqPeriodDb = 10 * log10(_periodPower / _periodSampleSize);

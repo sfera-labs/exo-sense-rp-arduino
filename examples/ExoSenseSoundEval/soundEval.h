@@ -145,7 +145,7 @@ static double  getSamplesWeightedPower(double  samplesPower, int samplesSize) {
     double  freq = i / (_periodTimeMs / 1000.0);
     double  freqPwr = pow(_fftOut[i][0], 2) + pow(_fftOut[i][1], 2);
     
-    if (freq <= SNDEV_SAMPLING_FREQ_HZ) { // TODO why not SNDEV_SAMPLING_FREQ_HZ/2 ?
+    if (freq <= SNDEV_SAMPLING_FREQ_HZ / 2) {
       if (freq > _weightingTable[freqBandIdx][SNDEV_FREQ_WEIGHTING_FREQ]) {
         freqBandIdx++;
       }

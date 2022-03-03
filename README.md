@@ -24,7 +24,7 @@ Select "Generic RP2040" from the menu *Tools* > *Board* > *Raspberry Pi RP2040 B
 You will see additional menu entries under *Tools*, set Flash size to 16MB (with or without FS) and leave the other entries unchanged.
 
 The first time you upload a sketch, you will need to hold the BOOTSEL button down while plugging the USB cable connected to your computer, then release the BOOTSEL button.
-In the menu *Tools* > *Port* you will find a RP2040 entry under UF2 Devices, select it and hit the Arduino IDE's upload button, the sketch will be transferred and start to run.
+Hit the Arduino IDE's upload button, the sketch will be transferred and start to run.
 
 After the first upload, the board will appear under the standard Serial ports list and will automatically reset and switch to bootloader mode when hitting the IDE's upload button as with any other Arduino boards.
 

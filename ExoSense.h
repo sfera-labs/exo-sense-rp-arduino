@@ -61,6 +61,7 @@
 
 #define ICS43432_SAMPLE_FRAME_BITS (32)
 #define ICS43432_SAMPLE_DATA_BITS (24)
+#define ICS43432_SAMPLE_VAL_MAX (0x7FFFFF)
 #define ICS43432_BYTES_PER_SAMPLE_FRAME (ICS43432_SAMPLE_FRAME_BITS / 8)
 #define ICS43432_SENSITIVITY_DB (-26)
 
@@ -79,6 +80,7 @@ class ExoSenseClass
     void temperatureOffsetCompensate(float tempOffset,
               float* temperature, float* rh);
     bool ics43432Begin(int bufferSize, long sampleRate);
+    int32_t ics43432Bytes2Sample(uint8_t* bytes);
 };
 
 extern ExoSenseClass ExoSense;

@@ -23,6 +23,7 @@
 uint8_t buffBytes[BUFF_SIZE];
 
 void setup() {
+  bool ok;
   Serial.begin(9600);
   while (!Serial) ;
   
@@ -33,23 +34,28 @@ void setup() {
     while (true) ;
   }
 
-  if (!soundEvalSetMicSpecs(ICS43432_SENSITIVITY_DB, 
-          ICS43432_SAMPLE_FRAME_BITS, SNDEV_SAMPLE_DATA_FMT_S24LE)) {
-    Serial.println("Microphone not supported");
-    while (true) ;        
+  if (!soundEvalSetMicSpecs(ICS43432_SENSITIVITY_DB, ICS43432_SAMPLE_VAL_MAX)) {
+    Serial.println("Microphone specs error");
+    while (true) ;
   }
 
   /* Pick a time weighting */
-  soundEvalSetTimeWeighting(SNDEV_TIME_WEIGHTING_SLOW);
-  // soundEvalSetTimeWeighting(SNDEV_TIME_WEIGHTING_FAST);
-  // soundEvalSetTimeWeighting(SNDEV_TIME_WEIGHTING_IMPULSE);
+  ok = soundEvalSetTimeWeighting(SNDEV_TIME_WEIGHTING_SLOW);
+  // ok = soundEvalSetTimeWeighting(SNDEV_TIME_WEIGHTING_FAST);
+  // ok = soundEvalSetTimeWeighting(SNDEV_TIME_WEIGHTING_IMPULSE);
+  if (!ok) {
+    Serial.println("Time Weighting error");
+    while (true) ;
+  }
 
   /* Pick a frequency weighting */
-  soundEvalSetFreqWeighting(SNDEV_FREQ_WEIGHTING_A);
-  // soundEvalSetFreqWeighting(SNDEV_FREQ_WEIGHTING_C);
-  // soundEvalSetFreqWeighting(SNDEV_FREQ_WEIGHTING_Z);
-  
-  // TODO remove soundEvalSetReadFunct(&readSamples);
+  // ok = soundEvalSetFreqWeighting(SNDEV_FREQ_WEIGHTING_A);
+  // ok = soundEvalSetFreqWeighting(SNDEV_FREQ_WEIGHTING_C);
+   ok = soundEvalSetFreqWeighting(SNDEV_FREQ_WEIGHTING_Z);
+  if (!ok) {
+    Serial.println("Frequency Weighting error");
+    while (true) ;
+  }
 
   Serial.println("Ready");
 }
@@ -57,7 +63,10 @@ void setup() {
 void loop() {
   int ret = ExoSense.ics43432.read(buffBytes, BUFF_SIZE);
   if (ret > 0) {
-    soundEvalProcess(ret, buffBytes);
+    for (int i = 0; i < ret; i += ICS43432_BYTES_PER_SAMPLE_FRAME) {
+      int32_t sample = ExoSense.ics43432Bytes2Sample(&buffBytes[i]);
+      soundEvalProcess(sample);
+    }
   } else {
     Serial.print("Microphone read error: ");
     Serial.println(ret);

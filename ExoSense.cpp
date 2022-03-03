@@ -78,4 +78,14 @@ bool ExoSenseClass::ics43432Begin(int bufferSize, long sampleRate) {
   return ics43432.begin(I2S_MODE_MONO, sampleRate, ICS43432_SAMPLE_FRAME_BITS);
 }
 
+int32_t ExoSenseClass::ics43432Bytes2Sample(uint8_t* bytes) {
+  int32_t sample = (unsigned int) bytes[3] * 65536
+                 + (unsigned int) bytes[2] * 256
+                 + (unsigned int) bytes[1];
+  if ((sample & 0x800000) == 0x800000) {
+    sample |= 0xff000000;
+  }
+  return sample;
+}
+
 ExoSenseClass ExoSense;

@@ -15,7 +15,6 @@
  */
 
 #include <ExoSense.h>
-#include "soundEval.h"
 
 #define BUFF_SIZE (1000 * ICS43432_BYTES_PER_SAMPLE_FRAME)
 #define I2S_INTERNAL_BUFFER_SIZE (BUFF_SIZE * 10)
@@ -34,24 +33,26 @@ void setup() {
     while (true) ;
   }
 
-  if (!soundEvalSetMicSpecs(ICS43432_SENSITIVITY_DB, ICS43432_SAMPLE_VAL_MAX)) {
+  if (!SoundEval.setMicSpecs(ICS43432_SENSITIVITY_DB, ICS43432_SAMPLE_VAL_MAX)) {
     Serial.println("Microphone specs error");
     while (true) ;
   }
 
+  SoundEval.setPeriodResultCallback(onPeriodResult);
+
   /* Pick a time weighting */
-  ok = soundEvalSetTimeWeighting(SNDEV_TIME_WEIGHTING_SLOW);
-  // ok = soundEvalSetTimeWeighting(SNDEV_TIME_WEIGHTING_FAST);
-  // ok = soundEvalSetTimeWeighting(SNDEV_TIME_WEIGHTING_IMPULSE);
+  ok = SoundEval.setTimeWeighting(SNDEV_TIME_WEIGHTING_SLOW);
+  // ok = SoundEval.setTimeWeighting(SNDEV_TIME_WEIGHTING_FAST);
+  // ok = SoundEval.setTimeWeighting(SNDEV_TIME_WEIGHTING_IMPULSE);
   if (!ok) {
     Serial.println("Time Weighting error");
     while (true) ;
   }
 
   /* Pick a frequency weighting */
-  // ok = soundEvalSetFreqWeighting(SNDEV_FREQ_WEIGHTING_A);
-  // ok = soundEvalSetFreqWeighting(SNDEV_FREQ_WEIGHTING_C);
-  ok = soundEvalSetFreqWeighting(SNDEV_FREQ_WEIGHTING_Z);
+  ok = SoundEval.setFreqWeighting(SNDEV_FREQ_WEIGHTING_A);
+  // ok = SoundEval.setFreqWeighting(SNDEV_FREQ_WEIGHTING_C);
+  // ok = SoundEval.setFreqWeighting(SNDEV_FREQ_WEIGHTING_Z);
   if (!ok) {
     Serial.println("Frequency Weighting error");
     while (true) ;
@@ -65,10 +66,16 @@ void loop() {
   if (ret > 0) {
     for (int i = 0; i < ret; i += ICS43432_BYTES_PER_SAMPLE_FRAME) {
       int32_t sample = ExoSense.ics43432Bytes2Sample(&buffBytes[i]);
-      soundEvalProcess(sample);
+      SoundEval.process(sample);
     }
   } else {
     Serial.print("Microphone read error: ");
     Serial.println(ret);
   }
+}
+
+void onPeriodResult(float lEqPeriodDb) {
+  Serial.print("Leq period: ");
+  Serial.print(lEqPeriodDb);
+  Serial.println(" dB");
 }

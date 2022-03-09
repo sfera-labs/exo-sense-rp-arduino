@@ -5,3 +5,4 @@
 #include "libs/arduino-i2c-sgp40/src/SensirionI2CSgp40.h"
 #include "libs/arduino-gas-index-algorithm/src/VOCGasIndexAlgorithm.h"
 #include "libs/arduino-pico-i2s-audio/src/I2S.h"
+#include "libs/sound-eval/SoundEval.h"

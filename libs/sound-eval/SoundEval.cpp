@@ -1,19 +1,20 @@
-#include "kiss_fftr.h"
+/*
+  SoundEval.cpp - Sound Evaluation library
 
-#define SNDEV_SAMPLING_FREQ_HZ   40000
+    Copyright (C) 2022 Sfera Labs S.r.l. - All rights reserved.
 
-#define SNDEV_TIME_WEIGHTING_SLOW    1
-#define SNDEV_TIME_WEIGHTING_FAST    2
-#define SNDEV_TIME_WEIGHTING_IMPULSE 3
+    For information, see:
+    http://www.sferalabs.cc/
 
-#define SNDEV_FREQ_WEIGHTING_FREQ   0
-#define SNDEV_FREQ_WEIGHTING_A      1
-#define SNDEV_FREQ_WEIGHTING_C      2
-#define SNDEV_FREQ_WEIGHTING_Z      3
+  This code is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+  See file LICENSE.txt for further informations on licensing terms.
+*/
 
-#define SNDEV_PERIOD_MS_SLOW      1000
-#define SNDEV_PERIOD_MS_FAST      125
-#define SNDEV_PERIOD_MS_IMPULSE   35
+#include "SoundEval.h"
+#include "kiss_fft/kiss_fftr.h"
 
 #define SNDEV_PERIOD_SAMPLES_SLOW    (SNDEV_PERIOD_MS_SLOW * SNDEV_SAMPLING_FREQ_HZ / 1000) // = 40000
 #define SNDEV_PERIOD_SAMPLES_FAST    (SNDEV_PERIOD_MS_FAST * SNDEV_SAMPLING_FREQ_HZ / 1000) // = 5000
@@ -45,6 +46,7 @@ static kiss_fftr_cfg _fftCfg;
 
 static float _lEqBand[SNDEV_FREQ_BANDS];
 static float _lEqPeriodDb;
+static SoundEvalClass::SoundEvalCallback* _periodCb;
 
 static float _weightingTable[SNDEV_FREQ_BANDS][4] = {
    // freq,    A,        C,       Z
@@ -86,12 +88,19 @@ static float _weightingTable[SNDEV_FREQ_BANDS][4] = {
     { 20000,   -9.3,     -11.2,    0 },
 };
 
-bool soundEvalSetMicSpecs(float sensitivityDb, int32_t sampleMaxVal) {
+SoundEvalClass::SoundEvalClass() {
+}
+
+void SoundEvalClass::setPeriodResultCallback(SoundEvalClass::SoundEvalCallback *cb) {
+  _periodCb = cb;
+}
+
+bool SoundEvalClass::setMicSpecs(float sensitivityDb, int32_t sampleMaxVal) {
   _refOnePa = sampleMaxVal * pow(10, sensitivityDb / 20.0);
   return true;
 }
 
-bool soundEvalSetTimeWeighting(int tw) {
+bool SoundEvalClass::setTimeWeighting(int tw) {
   float periodTimeMs;
   switch (tw) {
     case SNDEV_TIME_WEIGHTING_FAST:
@@ -125,7 +134,7 @@ bool soundEvalSetTimeWeighting(int tw) {
   return true;
 }
 
-bool soundEvalSetFreqWeighting(int fw) {
+bool SoundEvalClass::setFreqWeighting(int fw) {
   switch (fw) {
     case SNDEV_FREQ_WEIGHTING_A:
     case SNDEV_FREQ_WEIGHTING_C:
@@ -141,7 +150,7 @@ static float getSamplesWeightedPower(float samplesPower, int samplesSize) {
   float totPwr = 0;
   float totWeightedPwr = 0;
   int freqBandIdx = 0;
-  
+
   for (int i = 0; i < SNDEV_FREQ_BANDS; i++) {
     _freqBandPow[i] = 0;
   }
@@ -151,7 +160,7 @@ static float getSamplesWeightedPower(float samplesPower, int samplesSize) {
   for (int i = 0; i < samplesSize / 2 + 1; i++) {
     float freq = i / _samplesTimeSec;
     float freqPwr = (_fftOut[i].r * _fftOut[i].r) + (_fftOut[i].i * _fftOut[i].i);
-    
+
     if (freq <= SNDEV_SAMPLING_FREQ_HZ / 2) {
       if (freq > _weightingTable[freqBandIdx][SNDEV_FREQ_WEIGHTING_FREQ]) {
         freqBandIdx++;
@@ -171,7 +180,7 @@ static float getSamplesWeightedPower(float samplesPower, int samplesSize) {
   return totWeightedPwr;
 }
 
-static void processSamples() {  
+static void processSamples() {
   float samplesPower = 0;
   for (int i = 0; i < _samplesBuffMax; i++) {
     float pressure = _samplesBuff[i] / _refOnePa;
@@ -182,22 +191,24 @@ static void processSamples() {
 
   _periodPowerCnt += _samplesBuffMax;
   _periodPower += getSamplesWeightedPower(samplesPower, _samplesBuffMax);
-  
+
   if (_periodPowerCnt >= _periodSampleSize) {
     _lEqPeriodDb = 10 * log10(_periodPower / _periodRounds);
     _periodPowerCnt = 0;
     _periodPower = 0;
 
-    Serial.println(" === _lEqPeriodDb ==="); // TODO remove
-    Serial.println(_lEqPeriodDb); // TODO remove
-    Serial.println(" ===================="); // TODO remove
+    if (_periodCb != NULL) {
+      _periodCb(_lEqPeriodDb);
+    }
   }
 }
 
-void soundEvalProcess(int32_t sample) {
+void SoundEvalClass::process(int32_t sample) {
   _samplesBuff[_samplesBuffIdx] = sample;
   if (++_samplesBuffIdx >= _samplesBuffMax) {
     processSamples();
     _samplesBuffIdx = 0;
   }
 }
+
+SoundEvalClass SoundEval;

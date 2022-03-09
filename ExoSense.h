@@ -65,8 +65,7 @@
 #define ICS43432_BYTES_PER_SAMPLE_FRAME (ICS43432_SAMPLE_FRAME_BITS / 8)
 #define ICS43432_SENSITIVITY_DB (-26)
 
-class ExoSenseClass
-{
+class ExoSenseClass {
   public:
     ClosedCube_OPT3001 opt3001;
     SensirionI2CSht4x sht40;

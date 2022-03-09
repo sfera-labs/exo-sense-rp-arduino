@@ -1,5 +1,5 @@
 /*
- * ExoSenseSoundEval.ino - Using Exo Sense RP's microphone
+ * ExoSenseSoundEval.ino - Using Exo Sense RP's microphone for sound evaluation
  * 
  *   Copyright (C) 2022 Sfera Labs S.r.l. - All rights reserved.
  * 
@@ -51,7 +51,7 @@ void setup() {
   /* Pick a frequency weighting */
   // ok = soundEvalSetFreqWeighting(SNDEV_FREQ_WEIGHTING_A);
   // ok = soundEvalSetFreqWeighting(SNDEV_FREQ_WEIGHTING_C);
-   ok = soundEvalSetFreqWeighting(SNDEV_FREQ_WEIGHTING_Z);
+  ok = soundEvalSetFreqWeighting(SNDEV_FREQ_WEIGHTING_Z);
   if (!ok) {
     Serial.println("Frequency Weighting error");
     while (true) ;
@@ -72,56 +72,3 @@ void loop() {
     Serial.println(ret);
   }
 }
-
-/* TODO remove
-bool readSamples(unsigned int size, int32_t* samples) {
-  unsigned int bytesToRead = size * ICS43432_BYTES_PER_SAMPLE_FRAME;
-  int ret;
-
-  Serial.println("---------------");
-  int32_t* ins = samples;
-  Serial.println(size);
-  Serial.println("---------------");
-  
-  while (bytesToRead > 0) {
-    //Serial.println(bytesToRead); // TODO remove
-    
-    ret = ExoSense.ics43432.read(buffBytes, min(BUFF_SIZE, bytesToRead));
-    if (ret < 0) {
-      Serial.print("Microphone read error: ");
-      Serial.println(ret);
-      return false;
-    }
-    
-    //Serial.println(ret); // TODO remove
-    
-    bytesToRead -= ret;
-    int readSamples = ret / ICS43432_BYTES_PER_SAMPLE_FRAME;
-    
-    //Serial.println((int) samples - (int) ins); // TODO remove
-
-    ExoSense.ics43432Bytes2Samples(buffBytes, readSamples, samples);
-    samples += readSamples;
-
-    //Serial.println("=="); // TODO remove
-  }
-
-  
-  //Serial.println(ins[size - 1]);
-
-  //Serial.println(buffBytes[ret - 4] & 0xff);
-  //Serial.println(ins[size - 1] & 0xff);
-
-  //Serial.println(buffBytes[ret - 3] & 0xff);
-  //Serial.println((ins[size - 1] >> 8) & 0xff);
-
-  //Serial.println(buffBytes[ret - 2] & 0xff);
-  //Serial.println((ins[size - 1] >> 16) & 0xff);
-
-  //Serial.println(buffBytes[ret - 1] & 0xff);
-
-  //Serial.println("==========="); delay(2000); // TODO remove
-
-  return true;
-}
-*/

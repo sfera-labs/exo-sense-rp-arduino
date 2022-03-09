@@ -27,7 +27,7 @@ void ExoSenseClass::setup() {
   pinMode(EXOS_PIN_DI1, INPUT);
   pinMode(EXOS_PIN_DI2, INPUT);
   gpio_disable_pulls(EXOS_PIN_DI1);
-  gpio_disable_pulls(EXOS_PIN_DI1);
+  gpio_disable_pulls(EXOS_PIN_DI2);
 
   pinMode(EXOS_PIN_LED, OUTPUT);
 

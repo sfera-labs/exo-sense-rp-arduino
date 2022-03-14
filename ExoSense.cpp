@@ -40,7 +40,8 @@ void ExoSenseClass::setup() {
 
   EXOS_RS485.setRX(EXOS_PIN_RS485_RX);
   EXOS_RS485.setTX(EXOS_PIN_RS485_TX);
-  EXOS_RS485.begin(9600, SERIAL_8N1);
+  EXOS_RS485.begin(9600);
+  EXOS_RS485.end();
 
   Wire.setSDA(EXOS_PIN_I2C_SDA);
   Wire.setSCL(EXOS_PIN_I2C_SCL);

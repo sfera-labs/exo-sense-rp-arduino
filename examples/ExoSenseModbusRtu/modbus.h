@@ -1,19 +1,29 @@
 #include <ModbusRtuSlave.h>
 
-#define IN_REG_START                300
-#define IN_REG_OFFSET_TEMP          1
-#define IN_REG_OFFSET_RH            2
-#define IN_REG_OFFSET_VOC_RAW       4
-#define IN_REG_OFFSET_VOC_IDX       5
-#define IN_REG_OFFSET_LUX           7
-#define IN_REG_OFFSET_PIR           9
-#define IN_REG_OFFSET_LEQ_ITV_MIN   11
-#define IN_REG_OFFSET_LEQ_ITV_MAX   12
-#define IN_REG_OFFSET_LEQ_ITV_AVG   13
-#define IN_REG_OFFSET_LEQ_PRD_MIN   15
-#define IN_REG_OFFSET_LEQ_PRD_MAX   16
-#define IN_REG_OFFSET_LEQ_PRD_AVG   17
-#define IN_REG_OFFSET_MAX           IN_REG_OFFSET_LEQ_PRD_AVG
+#define MB_REG_IN_START                300
+#define MB_REG_IN_OFFSET_TEMP          1
+#define MB_REG_IN_OFFSET_RH            2
+#define MB_REG_IN_OFFSET_VOC_RAW       4
+#define MB_REG_IN_OFFSET_VOC_IDX       5
+#define MB_REG_IN_OFFSET_LUX           7
+#define MB_REG_IN_OFFSET_PIR           9
+#define MB_REG_IN_OFFSET_LEQ_PRD_MIN   11
+#define MB_REG_IN_OFFSET_LEQ_PRD_MAX   12
+#define MB_REG_IN_OFFSET_LEQ_PRD_AVG   13
+#define MB_REG_IN_OFFSET_MAX           MB_REG_IN_OFFSET_LEQ_PRD_AVG
+
+#define MB_REG_CFG_START               1000
+#define MB_REG_CFG_OFFSET_MB_ADDR      1
+#define MB_REG_CFG_OFFSET_MB_BAUD      2
+#define MB_REG_CFG_OFFSET_MB_PARITY    3
+#define MB_REG_CFG_OFFSET_TMP_OFF      4
+#define MB_REG_CFG_OFFSET_SND_TIME     5
+#define MB_REG_CFG_OFFSET_SND_FREQ     6
+#define MB_REG_CFG_OFFSET_MAX          MB_REG_CFG_OFFSET_SND_FREQ
+
+uint16_t _cfgTmpOff;
+uint16_t _cfgSndTime;
+uint16_t _cfgSndFreq;
 
 #define MB_REG_VAL_ERR UINT16_MAX
 
@@ -25,24 +35,21 @@ bool _doEnabled = false;
 unsigned long _doStart;
 unsigned long _doTime;
 
-static word _inputRegisters[IN_REG_OFFSET_MAX + 1];
-
-int16_t _leqItvMin = INT16_MAX;
-int16_t _leqItvMax = INT16_MIN;
-double _leqItvAvg = 0;
-uint32_t _leqItvCnt = 0;
-
 int16_t _leqPrdMin = INT16_MAX;
 int16_t _leqPrdMax = INT16_MIN;
 double _leqPrdAvg = 0;
 uint32_t _leqPrdCnt = 0;
+auto_init_mutex(_leqPrdMtx);
+
+static word _inputRegisters[MB_REG_IN_OFFSET_MAX + 1];
+static word _cfgRegisters[MB_REG_CFG_OFFSET_MAX + 1];
 
 void modbusSetTemperature(float val) {
   val *= 10;
   if (val < INT16_MIN || val > INT16_MAX) {
     val = INT16_MIN;
   }
-  _inputRegisters[IN_REG_OFFSET_TEMP] = (int) val;
+  _inputRegisters[MB_REG_IN_OFFSET_TEMP] = (int) val;
 }
 
 void modbusSetRh(float val) {
@@ -50,18 +57,18 @@ void modbusSetRh(float val) {
   if (val < 0 || val > 1000) {
     val = UINT16_MAX;
   }
-  _inputRegisters[IN_REG_OFFSET_RH] = (int) val;
+  _inputRegisters[MB_REG_IN_OFFSET_RH] = (int) val;
 }
 
 void modbusSetVocRaw(uint16_t val) {
-  _inputRegisters[IN_REG_OFFSET_VOC_RAW] = val;
+  _inputRegisters[MB_REG_IN_OFFSET_VOC_RAW] = val;
 }
 
 void modbusSetVocIdx(int32_t val) {
   if (val < 0 || val > 500) {
     val = UINT16_MAX;
   }
-  _inputRegisters[IN_REG_OFFSET_VOC_IDX] = val;
+  _inputRegisters[MB_REG_IN_OFFSET_VOC_IDX] = val;
 }
 
 void modbusSetLux(float val) {
@@ -69,28 +76,13 @@ void modbusSetLux(float val) {
   if (val < 0 || val > UINT16_MAX) {
     val = UINT16_MAX;
   }
-  _inputRegisters[IN_REG_OFFSET_LUX] = (int) val;
-}
-
-void modbusSetLeqItv(float val) {
-  val *= 10;
-  if (val >= INT16_MIN && val <= INT16_MAX) {
-    if (val < _leqItvMin) {
-      _leqItvMin = val;
-    }
-    if (val > _leqItvMax) {
-      _leqItvMax = val;
-    }
-    _leqItvAvg = _leqItvAvg * _leqItvCnt + val;
-    _leqItvAvg /= ++_leqItvCnt;
-
-    _inputRegisters[IN_REG_OFFSET_LEQ_ITV_MIN] = _leqItvMin;
-    _inputRegisters[IN_REG_OFFSET_LEQ_ITV_MAX] = _leqItvMax;
-    _inputRegisters[IN_REG_OFFSET_LEQ_ITV_AVG] = (int) _leqItvAvg;
-  }
+  _inputRegisters[MB_REG_IN_OFFSET_LUX] = (int) val;
 }
 
 void modbusSetLeqPrd(float val) {
+  if (!mutex_enter_timeout_ms(&_leqPrdMtx, 3)) {
+    return;
+  }
   val *= 10;
   if (val >= INT16_MIN && val <= INT16_MAX) {
     if (val < _leqPrdMin) {
@@ -102,14 +94,15 @@ void modbusSetLeqPrd(float val) {
     _leqPrdAvg = _leqPrdAvg * _leqPrdCnt + val;
     _leqPrdAvg /= ++_leqPrdCnt;
 
-    _inputRegisters[IN_REG_OFFSET_LEQ_PRD_MIN] = _leqPrdMin;
-    _inputRegisters[IN_REG_OFFSET_LEQ_PRD_MAX] = _leqPrdMax;
-    _inputRegisters[IN_REG_OFFSET_LEQ_PRD_AVG] = (int) _leqPrdAvg;
+    _inputRegisters[MB_REG_IN_OFFSET_LEQ_PRD_MIN] = _leqPrdMin;
+    _inputRegisters[MB_REG_IN_OFFSET_LEQ_PRD_MAX] = _leqPrdMax;
+    _inputRegisters[MB_REG_IN_OFFSET_LEQ_PRD_AVG] = (int) _leqPrdAvg;
   }
+  mutex_exit(&_leqPrdMtx);
 }
 
 void modbusPirIsr() {
-  _inputRegisters[IN_REG_OFFSET_PIR]++;
+  _inputRegisters[MB_REG_IN_OFFSET_PIR]++;
 }
 
 static bool checkAddrRange(word regAddr, word qty, word min, word max) {
@@ -163,46 +156,63 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
       return MB_EX_ILLEGAL_DATA_ADDRESS;
 
     case MB_FC_READ_INPUT_REGISTER:
-      if (checkAddrRange(regAddr, qty, IN_REG_START, IN_REG_START + IN_REG_OFFSET_MAX)) {
-        int offset = regAddr - IN_REG_START;
-        for (int i = offset; i < offset + qty; i++) {
-          ModbusRtuSlave.responseAddRegister(_inputRegisters[i]);
+      if (checkAddrRange(regAddr, qty, MB_REG_IN_START, MB_REG_IN_START + MB_REG_IN_OFFSET_MAX)) {
+        int offset = regAddr - MB_REG_IN_START;
+        int offsetEnd = offset + qty;
+        
+        bool rdLPMin = (MB_REG_IN_OFFSET_LEQ_PRD_MIN >= offset && MB_REG_IN_OFFSET_LEQ_PRD_MIN <= offsetEnd);
+        bool rdLPMax = (MB_REG_IN_OFFSET_LEQ_PRD_MAX >= offset && MB_REG_IN_OFFSET_LEQ_PRD_MAX <= offsetEnd);
+        bool rdLPAvg = (MB_REG_IN_OFFSET_LEQ_PRD_AVG >= offset && MB_REG_IN_OFFSET_LEQ_PRD_AVG <= offsetEnd);
 
-          // Reset LEQ registers when read
-          if (i == IN_REG_OFFSET_LEQ_ITV_MIN) {
-            _inputRegisters[IN_REG_OFFSET_LEQ_ITV_MIN] = INT16_MIN;
-            _leqItvMin = INT16_MAX;
-          }
-          if (i == IN_REG_OFFSET_LEQ_ITV_MAX) {
-            _inputRegisters[IN_REG_OFFSET_LEQ_ITV_MAX] = INT16_MIN;
-            _leqItvMax = INT16_MIN;
-          }
-          if (i == IN_REG_OFFSET_LEQ_ITV_AVG) {
-            _inputRegisters[IN_REG_OFFSET_LEQ_ITV_AVG] = INT16_MIN;
-            _leqItvAvg = 0;
-            _leqItvCnt = 0;
-          }
-
-          if (i == IN_REG_OFFSET_LEQ_PRD_MIN) {
-            _inputRegisters[IN_REG_OFFSET_LEQ_PRD_MIN] = INT16_MIN;
-            _leqPrdMin = INT16_MAX;
-          }
-          if (i == IN_REG_OFFSET_LEQ_PRD_MAX) {
-            _inputRegisters[IN_REG_OFFSET_LEQ_PRD_MAX] = INT16_MIN;
-            _leqPrdMax = INT16_MIN;
-          }
-          if (i == IN_REG_OFFSET_LEQ_PRD_AVG) {
-            _inputRegisters[IN_REG_OFFSET_LEQ_PRD_AVG] = INT16_MIN;
-            _leqPrdAvg = 0;
-            _leqPrdCnt = 0;
+        if (rdLPMin || rdLPMax || rdLPAvg) {
+          if (!mutex_enter_timeout_ms(&_leqPrdMtx, 3)) {
+            return MB_EX_SERVER_DEVICE_BUSY;
           }
         }
+        
+        for (int i = offset; i < offsetEnd; i++) {
+          ModbusRtuSlave.responseAddRegister(_inputRegisters[i]);
+        }
+
+        // Reset LEQ registers when read
+        if (rdLPMin) {
+          _inputRegisters[MB_REG_IN_OFFSET_LEQ_PRD_MIN] = INT16_MIN;
+          _leqPrdMin = INT16_MAX;
+        }
+        if (rdLPMax) {
+          _inputRegisters[MB_REG_IN_OFFSET_LEQ_PRD_MAX] = INT16_MIN;
+          _leqPrdMax = INT16_MIN;
+        }
+        if (rdLPAvg) {
+          _inputRegisters[MB_REG_IN_OFFSET_LEQ_PRD_AVG] = INT16_MIN;
+          _leqPrdAvg = 0;
+          _leqPrdCnt = 0;
+        }
+
+        if (rdLPMin || rdLPMax || rdLPAvg) {
+          mutex_exit(&_leqPrdMtx);
+        }
+          
+        return MB_RESP_OK;
+      }
+      return MB_EX_ILLEGAL_DATA_ADDRESS;
+
+    case MB_FC_READ_HOLDING_REGISTER:
+      if (checkAddrRange(regAddr, qty, MB_REG_CFG_START, MB_REG_CFG_START + MB_REG_CFG_OFFSET_MAX)) {
+        int offset = regAddr - MB_REG_CFG_START;
+        int offsetEnd = offset + qty;
+        
+        for (int i = offset; i < offsetEnd; i++) {
+          ModbusRtuSlave.responseAddRegister(_cfgRegisters[i]);
+        }
+        
         return MB_RESP_OK;
       }
       return MB_EX_ILLEGAL_DATA_ADDRESS;
 
     case MB_FC_WRITE_SINGLE_REGISTER:
-      if (regAddr == 211) {
+    case MB_FC_WRITE_MULTIPLE_REGISTERS:
+      if (regAddr == 211 && qty == 1) {
         _doTime = 100 * ModbusRtuSlave.getDataRegister(function, data, 0);
         if (_doTime > 0) {
           _doEnabled = true;
@@ -213,7 +223,7 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
         }
         return MB_RESP_OK;
       
-      } else if (regAddr == 401) {
+      } else if (regAddr == 401 && qty == 1) {
         _buzzTime = 100 * ModbusRtuSlave.getDataRegister(function, data, 0);
         if (_buzzTime > 0) {
           _buzzEnabled = true;
@@ -221,6 +231,35 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
           digitalWrite(EXOS_PIN_BUZZER, HIGH);
         } else {
           digitalWrite(EXOS_PIN_BUZZER, LOW);
+        }
+        return MB_RESP_OK;
+        
+      } else if (checkAddrRange(regAddr, qty, MB_REG_CFG_START, MB_REG_CFG_START + MB_REG_CFG_OFFSET_MAX)) {
+        int offset = regAddr - MB_REG_CFG_START;
+        int offsetEnd = offset + qty;
+        
+        for (int i = offset; i < offsetEnd; i++) {
+          word val = ModbusRtuSlave.getDataRegister(function, data, i - 1);
+          switch (i) {
+            case MB_REG_CFG_OFFSET_MB_ADDR:
+              if (val < 1 || val > 247) {
+                return MB_EX_ILLEGAL_DATA_VALUE;
+              }
+              break;
+            case MB_REG_CFG_OFFSET_MB_BAUD:
+              if (val < 1 || val > 8) {
+                return MB_EX_ILLEGAL_DATA_VALUE;
+              }
+              break;
+            case MB_REG_CFG_OFFSET_MB_PARITY:
+            case MB_REG_CFG_OFFSET_SND_TIME:
+            case MB_REG_CFG_OFFSET_SND_FREQ:
+              if (val < 1 || val > 3) {
+                return MB_EX_ILLEGAL_DATA_VALUE;
+              }
+              break;
+          }
+          _cfgRegisters[i] = val;
         }
         return MB_RESP_OK;
       }
@@ -232,22 +271,22 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
 }
 
 void modbusBegin(byte unitAddr, unsigned long baud, unsigned long config) {
+#if defined(ARDUINO_PICO_MAJOR) && defined(ARDUINO_PICO_MINOR) && (ARDUINO_PICO_MAJOR > 1 || (ARDUINO_PICO_MAJOR == 1 && ARDUINO_PICO_MINOR >= 11))
+  EXOS_RS485.setPollingMode(true);
+#endif
   EXOS_RS485.begin(baud, config);
   ModbusRtuSlave.setCallback(&modbusOnRequest);
   ModbusRtuSlave.begin(unitAddr, &EXOS_RS485, baud, EXOS_PIN_RS485_TXEN_N, true);
 
-  _inputRegisters[IN_REG_OFFSET_TEMP] = INT16_MIN;
-  _inputRegisters[IN_REG_OFFSET_RH] = UINT16_MAX;
-  _inputRegisters[IN_REG_OFFSET_VOC_RAW] = UINT16_MAX;
-  _inputRegisters[IN_REG_OFFSET_VOC_IDX] = UINT16_MAX;
-  _inputRegisters[IN_REG_OFFSET_LUX] = UINT16_MAX;
-  _inputRegisters[IN_REG_OFFSET_PIR] = 0;
-  _inputRegisters[IN_REG_OFFSET_LEQ_ITV_MIN] = INT16_MIN;
-  _inputRegisters[IN_REG_OFFSET_LEQ_ITV_MAX] = INT16_MIN;
-  _inputRegisters[IN_REG_OFFSET_LEQ_ITV_AVG] = INT16_MIN;
-  _inputRegisters[IN_REG_OFFSET_LEQ_PRD_MIN] = INT16_MIN;
-  _inputRegisters[IN_REG_OFFSET_LEQ_PRD_MAX] = INT16_MIN;
-  _inputRegisters[IN_REG_OFFSET_LEQ_PRD_AVG] = INT16_MIN;
+  _inputRegisters[MB_REG_IN_OFFSET_TEMP] = INT16_MIN;
+  _inputRegisters[MB_REG_IN_OFFSET_RH] = UINT16_MAX;
+  _inputRegisters[MB_REG_IN_OFFSET_VOC_RAW] = UINT16_MAX;
+  _inputRegisters[MB_REG_IN_OFFSET_VOC_IDX] = UINT16_MAX;
+  _inputRegisters[MB_REG_IN_OFFSET_LUX] = UINT16_MAX;
+  _inputRegisters[MB_REG_IN_OFFSET_PIR] = 0;
+  _inputRegisters[MB_REG_IN_OFFSET_LEQ_PRD_MIN] = INT16_MIN;
+  _inputRegisters[MB_REG_IN_OFFSET_LEQ_PRD_MAX] = INT16_MIN;
+  _inputRegisters[MB_REG_IN_OFFSET_LEQ_PRD_AVG] = INT16_MIN;
 }
 
 void modbusProcess() {

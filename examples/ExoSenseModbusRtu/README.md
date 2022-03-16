@@ -43,4 +43,4 @@ For the "Functions" column:
 |401|W|6|16|unsigned short|s/10|Buzzer beep with specified duration|
 |501|R/W|1,5|1|-|-|LED state|
 
-Registers values are set to `0xFFFF` (for unsigned short data type registers) or `0x8000` (signed short) upon error or no data available.
+Upon error or no data available, registers values are set to `0xFFFF` (for unsigned short data type registers) or `0x8000` (signed short).

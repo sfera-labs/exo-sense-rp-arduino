@@ -27,7 +27,7 @@ For the "Functions" column:
 |101|R|2|1|-|-|Digital input DI1 state|
 |102|R|2|1|-|-|Digital input DI2 state|
 |201|R/W|1,5|1|-|-|Digital output DO1 state|
-|211|W|6|16|unsigned short|s/10|Close DO1 for the specified time|
+|211|W|6,16|16|unsigned short|s/10|Close DO1 for the specified time|
 |301|R|4|16|signed short|&deg;C/10|Temperature|
 |302|R|4|16|unsigned short|&permil;|Relative humidity|
 |304|R|4|16|unsigned short|-|VOC sensor raw value|
@@ -37,10 +37,7 @@ For the "Functions" column:
 |311|R|4|16|signed short|dB/10|LEQ period evaluation result minimum since last read|
 |312|R|4|16|signed short|dB/10|LEQ period evaluation result maximum since last read|
 |313|R|4|16|signed short|dB/10|LEQ period evaluation result average since last read|
-|315|R|4|16|signed short|dB/10|LEQ interval evaluation result minimum since last read|
-|316|R|4|16|signed short|dB/10|LEQ interval evaluation result maximum since last read|
-|317|R|4|16|signed short|dB/10|LEQ interval evaluation result average since last read|
-|401|W|6|16|unsigned short|s/10|Buzzer beep with specified duration|
+|401|W|6,16|16|unsigned short|s/10|Buzzer beep with specified duration|
 |501|R/W|1,5|1|-|-|LED state|
 
 Upon error or no data available, registers values are set to `0xFFFF` (for unsigned short data type registers) or `0x8000` (signed short).

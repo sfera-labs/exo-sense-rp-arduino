@@ -13,17 +13,14 @@
 #define MB_REG_IN_OFFSET_MAX           MB_REG_IN_OFFSET_LEQ_PRD_AVG
 
 #define MB_REG_CFG_START               1000
+#define MB_REG_CFG_OFFSET_COMMIT       0
 #define MB_REG_CFG_OFFSET_MB_ADDR      1
 #define MB_REG_CFG_OFFSET_MB_BAUD      2
 #define MB_REG_CFG_OFFSET_MB_PARITY    3
-#define MB_REG_CFG_OFFSET_TMP_OFF      4
-#define MB_REG_CFG_OFFSET_SND_TIME     5
-#define MB_REG_CFG_OFFSET_SND_FREQ     6
-#define MB_REG_CFG_OFFSET_MAX          MB_REG_CFG_OFFSET_SND_FREQ
-
-uint16_t _cfgTmpOff;
-uint16_t _cfgSndTime;
-uint16_t _cfgSndFreq;
+#define MB_REG_CFG_OFFSET_SND_TIME     4
+#define MB_REG_CFG_OFFSET_SND_FREQ     5
+#define MB_REG_CFG_OFFSET_TMP_OFF      6
+#define MB_REG_CFG_OFFSET_MAX          MB_REG_CFG_OFFSET_TMP_OFF
 
 #define MB_REG_VAL_ERR UINT16_MAX
 
@@ -197,7 +194,7 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
       }
       return MB_EX_ILLEGAL_DATA_ADDRESS;
 
-    case MB_FC_READ_HOLDING_REGISTER:
+    case MB_FC_READ_HOLDING_REGISTERS:
       if (checkAddrRange(regAddr, qty, MB_REG_CFG_START, MB_REG_CFG_START + MB_REG_CFG_OFFSET_MAX)) {
         int offset = regAddr - MB_REG_CFG_START;
         int offsetEnd = offset + qty;
@@ -237,10 +234,17 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
       } else if (checkAddrRange(regAddr, qty, MB_REG_CFG_START, MB_REG_CFG_START + MB_REG_CFG_OFFSET_MAX)) {
         int offset = regAddr - MB_REG_CFG_START;
         int offsetEnd = offset + qty;
+        bool commit = false;
         
         for (int i = offset; i < offsetEnd; i++) {
-          word val = ModbusRtuSlave.getDataRegister(function, data, i - 1);
+          word val = ModbusRtuSlave.getDataRegister(function, data, i - offset);
           switch (i) {
+            case MB_REG_CFG_OFFSET_COMMIT:
+              if (qty != 1 || val != CFG_COMMIT_VAL) {
+                return MB_EX_ILLEGAL_DATA_VALUE;
+              }
+              commit = true;
+              break;
             case MB_REG_CFG_OFFSET_MB_ADDR:
               if (val < 1 || val > 247) {
                 return MB_EX_ILLEGAL_DATA_VALUE;
@@ -261,6 +265,11 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
           }
           _cfgRegisters[i] = val;
         }
+
+        if (commit) {
+          configCommit(_cfgRegisters, MB_REG_CFG_OFFSET_MAX + 1);
+        }
+        
         return MB_RESP_OK;
       }
       return MB_EX_ILLEGAL_DATA_ADDRESS;
@@ -270,11 +279,51 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
   }
 }
 
-void modbusBegin(byte unitAddr, unsigned long baud, unsigned long config) {
+void modbusBegin(byte unitAddr, uint16_t baudIdx, uint16_t parity) {
 #if defined(ARDUINO_PICO_MAJOR) && defined(ARDUINO_PICO_MINOR) && (ARDUINO_PICO_MAJOR > 1 || (ARDUINO_PICO_MAJOR == 1 && ARDUINO_PICO_MINOR >= 11))
   EXOS_RS485.setPollingMode(true);
 #endif
-  EXOS_RS485.begin(baud, config);
+
+  uint16_t serCfg;
+  switch (parity) {
+    case 2:
+      serCfg = SERIAL_8O1;
+      break;
+    case 3:
+      serCfg = SERIAL_8N2;
+      break;
+    default:
+      serCfg = SERIAL_8E1;
+  }
+
+  unsigned long baud;
+  switch (baudIdx) {
+    case 1:
+      baud = 1200;
+      break;
+    case 2:
+      baud = 2400;
+      break;
+    case 3:
+      baud = 4800;
+      break;
+    case 5:
+      baud = 19200;
+      break;
+    case 6:
+      baud = 38400;
+      break;
+    case 7:
+      baud = 57600;
+      break;
+    case 8:
+      baud = 115200;
+      break;
+    default:
+      baud = 9600;
+  }
+  
+  EXOS_RS485.begin(baud, serCfg);
   ModbusRtuSlave.setCallback(&modbusOnRequest);
   ModbusRtuSlave.begin(unitAddr, &EXOS_RS485, baud, EXOS_PIN_RS485_TXEN_N, true);
 

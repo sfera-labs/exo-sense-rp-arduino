@@ -15,41 +15,95 @@
  * 
  */
 
-// TODO ADD WATCHDOG LOGIC !!!!!
-
 #include <ExoSense.h>
-#include "modbus.h"
 #include "config.h"
+#include "modbus.h"
+#include "hardware/watchdog.h"
 
 #define MIC_BUFF_SIZE (1000 * ICS43432_BYTES_PER_SAMPLE_FRAME)
 #define I2S_INTERNAL_BUFFER_SIZE (MIC_BUFF_SIZE * 10)
 
-unsigned long lastReadTs = 0;
+// == Core 1: Sound eval ================
+
+uint8_t micBuff[MIC_BUFF_SIZE];
+unsigned long micStartTs;
+bool micReady;
 
 void setup() {
-  Serial.begin(9600);
+  micReady = false;
 
-  ExoSense.setup();
+  // Wait for other core to setup
+  rp2040.fifo.pop();
 
-  attachInterrupt(digitalPinToInterrupt(EXOS_PIN_PIR), modbusPirIsr, RISING);
-  modbusBegin(CFG_MB_UNIT_ADDDR, CFG_MB_BAUDRATE, CFG_MB_SERIAL_CFG);
+  ExoSense.ics43432Begin(I2S_INTERNAL_BUFFER_SIZE, SNDEV_SAMPLING_FREQ_HZ);
+  SoundEval.setMicSpecs(ICS43432_SENSITIVITY_DB, ICS43432_SAMPLE_VAL_MAX);
+  SoundEval.setPeriodResultCallback(onSoundEvalResult);
+  SoundEval.setTimeWeighting(_cfgRegisters[MB_REG_CFG_OFFSET_SND_TIME]);
+  SoundEval.setFreqWeighting(_cfgRegisters[MB_REG_CFG_OFFSET_SND_FREQ]);
 
-  // TODO remove ====
-  while(!Serial);
-  Serial.println("ready I");
-  // Serial.println(ARDUINO_PICO_VERSION_STR);
-  // Serial.println(ARDUINO_PICO_MAJOR);
-  // Serial.println(ARDUINO_PICO_MINOR);
-  // ================
-  
-  // Signal to core 2 setup done
-  rp2040.fifo.push_nb(0);
+  digitalWrite(EXOS_PIN_BUZZER, LOW);
 
-  // setup1x(); // TODO remove
+  micStartTs = millis();
 }
 
 void loop() {
+  // ping-pong with other core to update watchdog
+  uint32_t popped;
+  if (rp2040.fifo.pop_nb(&popped) && popped == 1) {
+    rp2040.fifo.push_nb(2);
+  }
+  
+  int ret = ExoSense.ics43432.read(micBuff, MIC_BUFF_SIZE);
+  if (!micReady) {
+    // discard initial noise readings
+    if (millis() - micStartTs > 2000) {
+       micReady = true; 
+    }
+    return;
+  }
+  if (ret > 0) {
+    for (int i = 0; i < ret; i += ICS43432_BYTES_PER_SAMPLE_FRAME) {
+      int32_t sample = ExoSense.ics43432Bytes2Sample(&micBuff[i]);
+      SoundEval.process(sample);
+    }
+  }
+}
+
+void onSoundEvalResult(float lEqPeriodDb) {
+  modbusSetLeqPrd(lEqPeriodDb);
+}
+
+// == Core 2: Modbus, sensors, I/O ================
+
+unsigned long lastReadTs = 0;
+
+void setup1() {
+  watchdog_enable(2000, 1);
+  watchdog_update();
+  
+  ExoSense.setup();
+  loadConfig();
+  attachInterrupt(digitalPinToInterrupt(EXOS_PIN_PIR), modbusPirIsr, RISING);
+  modbusBegin(_cfgRegisters[MB_REG_CFG_OFFSET_MB_ADDR],
+              _cfgRegisters[MB_REG_CFG_OFFSET_MB_BAUD],
+              _cfgRegisters[MB_REG_CFG_OFFSET_MB_PARITY]);
+  
+  // Signal to other core setup done
+  rp2040.fifo.push_nb(0);
+  rp2040.fifo.push_nb(1);
+
+  digitalWrite(EXOS_PIN_BUZZER, HIGH);
+}
+
+void loop1() {
   modbusProcess();
+
+  if (configReset) {
+    // let watchdog expire
+    while(true) {
+      delay(100);
+    }
+  }
 
   if (millis() - lastReadTs > 1000) {
     readTempRhVoc();
@@ -67,7 +121,23 @@ void loop() {
     _doEnabled = false;
   }
 
-  // loop1x(); // TODO remove
+  // ping-pong with other core to update watchdog
+  uint32_t popped;
+  if (rp2040.fifo.pop_nb(&popped) && popped == 2) {
+    rp2040.fifo.push_nb(1);
+    watchdog_update();
+  }
+}
+
+void loadConfig() {
+  if (!configRead(_cfgRegisters, MB_REG_CFG_OFFSET_MAX + 1)) {
+    _cfgRegisters[MB_REG_CFG_OFFSET_MB_ADDR] = CFG_MB_UNIT_ADDDR;
+    _cfgRegisters[MB_REG_CFG_OFFSET_MB_BAUD] = CFG_MB_BAUDRATE;
+    _cfgRegisters[MB_REG_CFG_OFFSET_MB_PARITY] = CFG_MB_PARITY;
+    _cfgRegisters[MB_REG_CFG_OFFSET_SND_TIME] = CFG_SNDEV_TIME_WEIGHTING;
+    _cfgRegisters[MB_REG_CFG_OFFSET_SND_FREQ] = CFG_SNDEV_FREQ_WEIGHTING;
+    _cfgRegisters[MB_REG_CFG_OFFSET_TMP_OFF] = CFG_TEMP_OFFSET;
+  }
 }
 
 void readLux() {
@@ -90,11 +160,12 @@ void readTempRhVoc() {
     humidity = SGP40_DEFAULT_HUMIDITY;
     temperature = SGP40_DEFAULT_TEMPERATURE;
   } else {
-    if (CFG_TEMP_OFFSET != 0) {
+    if (_cfgRegisters[MB_REG_CFG_OFFSET_TMP_OFF] != 0) {
       float userCompTemp = temperature;
       float userCompRh = humidity;
+      float tempOffset = ((int16_t) _cfgRegisters[MB_REG_CFG_OFFSET_TMP_OFF]) / 10.0;
       ExoSense.temperatureOffsetCompensate(
-                  CFG_TEMP_OFFSET, &userCompTemp, &userCompRh);
+                  tempOffset, &userCompTemp, &userCompRh);
       modbusSetRh(userCompRh);
       modbusSetTemperature(userCompTemp);
     } else {
@@ -115,64 +186,4 @@ void readTempRhVoc() {
     int32_t vocIdx = ExoSense.voc.process(srawVoc);
     modbusSetVocIdx(vocIdx);
   }
-}
-
-// == Core 2 =====
-
-uint8_t micBuff[MIC_BUFF_SIZE];
-unsigned long micStartTs;
-bool micReady;
-
-void setup1() {
-  micReady = false;
-
-  // Wait for core 1 to setup
-  rp2040.fifo.pop();
-
-  // TODO remove ====
-  while(!Serial);
-  Serial.println("*********** setup1 1 ************");
-  // ================
-
-  ExoSense.ics43432Begin(I2S_INTERNAL_BUFFER_SIZE, SNDEV_SAMPLING_FREQ_HZ);
-  SoundEval.setMicSpecs(ICS43432_SENSITIVITY_DB, ICS43432_SAMPLE_VAL_MAX);
-  SoundEval.setPeriodResultCallback(onSoundEvalResult);
-  SoundEval.setTimeWeighting(CFG_SNDEV_TIME_WEIGHTING);
-  SoundEval.setFreqWeighting(CFG_SNDEV_FREQ_WEIGHTING);
-
-  micStartTs = millis();
-  
-  // TODO remove ====
-  Serial.println("*********** setup1 2 ************");
-  // ================
-}
-
-void loop1() {
-  digitalWrite(EXOS_PIN_LED, !digitalRead(EXOS_PIN_LED)); // TODO remove
-  
-  int ret = ExoSense.ics43432.read(micBuff, MIC_BUFF_SIZE);
-  if (!micReady) {
-    // discard initial noise readings
-    if (millis() - micStartTs > 2000) {
-       micReady = true; 
-    }
-    return;
-  }
-  if (ret > 0) {
-    for (int i = 0; i < ret; i += ICS43432_BYTES_PER_SAMPLE_FRAME) {
-      int32_t sample = ExoSense.ics43432Bytes2Sample(&micBuff[i]);
-      SoundEval.process(sample);
-    }
-  } 
-  // TODO remove =============
-  else {
-    Serial.print("Microphone read error: ");
-    Serial.println(ret);
-  }
-  // =========================
-}
-
-void onSoundEvalResult(float lEqPeriodDb) {
-  modbusSetLeqPrd(lEqPeriodDb);
-  // Serial.println(lEqPeriodDb); // TODO remove
 }

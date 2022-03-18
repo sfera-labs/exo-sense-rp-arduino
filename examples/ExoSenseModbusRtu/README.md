@@ -39,9 +39,9 @@ Upon error or no data available, registers values are set to `0xFFFF` (for unsig
 |305|R|4|16|unsigned short|-|VOC index. Represents an air quality value on a scale from 0 to 500 where a lower value represents cleaner air and a value of 100 represents the typical air composition over the past 24h|
 |307|R|4|16|unsigned short|lx/10|Light intensity|
 |309|R|4|16|unsigned short|-|PIR sensor input counter. Incremented on each rising edge (i.e. when movement is detected). Rolls back to 0 after 65535|
-|311|R|4|16|signed short|dB/10|Sound evaluation *Leq* minimum value since last read (based on selected weightings configuration, see below)|
-|312|R|4|16|signed short|dB/10|Sound evaluation *Leq* maximum value since last read (based on selected weightings configuration, see below)|
-|313|R|4|16|signed short|dB/10|Sound evaluation *Leq* average value since last read (based on selected weightings configuration, see below)|
+|311|R|4|16|signed short|dB/10|[Sound evaluation *Leq*](https://github.com/sfera-labs/knowledge-base/blob/main/soundeval/equivalent-continuous-sound-level-leq.md) minimum value since last read (based on selected weightings configuration, see below)|
+|312|R|4|16|signed short|dB/10|[Sound evaluation *Leq*](https://github.com/sfera-labs/knowledge-base/blob/main/soundeval/equivalent-continuous-sound-level-leq.md) maximum value since last read (based on selected weightings configuration, see below)|
+|313|R|4|16|signed short|dB/10|[Sound evaluation *Leq*](https://github.com/sfera-labs/knowledge-base/blob/main/soundeval/equivalent-continuous-sound-level-leq.md) average value since last read (based on selected weightings configuration, see below)|
 |401|W|6,16|16|unsigned short|s/10|Buzzer beep with specified duration|
 |501|R/W|1,5|1|-|-|LED state|
 |1000|W|6,16|16|unsigned short|-|Write `0xABCD` (or modified value set in `CFG_COMMIT_VAL` in [config.h](config.h)) to commit the new configuration written in the registers below. This register can only be written individually, i.e. using function 6, or function 16 with a single data value. After positive response the unit is restarted and the new configuration is applyed|

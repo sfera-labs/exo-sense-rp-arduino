@@ -30,6 +30,7 @@
 #define CFG_TEMP_OFFSET     -25
 
 // == Value to be written in modbus register to commit config ==
+// (change it to invalidate currently saved configuration)
 #define CFG_COMMIT_VAL      0xabcd
 
 

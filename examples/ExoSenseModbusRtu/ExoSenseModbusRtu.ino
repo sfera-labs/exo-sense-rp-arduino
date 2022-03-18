@@ -1,19 +1,21 @@
 /*
- * ExoSenseModbusRtu.ino - 
+ * ExoSenseModbusRtu.ino -
  *   Using Exo Sense RP as a Modbus RTU slave unit
- * 
+ *
  *   Copyright (C) 2022 Sfera Labs S.r.l. - All rights reserved.
- * 
+ *
  *   For information, see:
  *   http://www.sferalabs.cc/
- * 
+ *
  * This code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  * See file LICENSE.txt for further informations on licensing terms.
- * 
+ *
  */
+
+#define EXOS_MODBUS_RTU_VERSION 0x0100
 
 #include <ExoSense.h>
 #include "config.h"
@@ -23,71 +25,24 @@
 #define MIC_BUFF_SIZE (1000 * ICS43432_BYTES_PER_SAMPLE_FRAME)
 #define I2S_INTERNAL_BUFFER_SIZE (MIC_BUFF_SIZE * 10)
 
-// == Core 1: Sound eval ================
 
-uint8_t micBuff[MIC_BUFF_SIZE];
-unsigned long micStartTs;
-bool micReady;
-
-void setup() {
-  micReady = false;
-
-  // Wait for other core to setup
-  rp2040.fifo.pop();
-
-  ExoSense.ics43432Begin(I2S_INTERNAL_BUFFER_SIZE, SNDEV_SAMPLING_FREQ_HZ);
-  SoundEval.setMicSpecs(ICS43432_SENSITIVITY_DB, ICS43432_SAMPLE_VAL_MAX);
-  SoundEval.setPeriodResultCallback(onSoundEvalResult);
-  SoundEval.setTimeWeighting(_cfgRegisters[MB_REG_CFG_OFFSET_SND_TIME]);
-  SoundEval.setFreqWeighting(_cfgRegisters[MB_REG_CFG_OFFSET_SND_FREQ]);
-
-  digitalWrite(EXOS_PIN_BUZZER, LOW);
-
-  micStartTs = millis();
-}
-
-void loop() {
-  // ping-pong with other core to update watchdog
-  uint32_t popped;
-  if (rp2040.fifo.pop_nb(&popped) && popped == 1) {
-    rp2040.fifo.push_nb(2);
-  }
-  
-  int ret = ExoSense.ics43432.read(micBuff, MIC_BUFF_SIZE);
-  if (!micReady) {
-    // discard initial noise readings
-    if (millis() - micStartTs > 2000) {
-       micReady = true; 
-    }
-    return;
-  }
-  if (ret > 0) {
-    for (int i = 0; i < ret; i += ICS43432_BYTES_PER_SAMPLE_FRAME) {
-      int32_t sample = ExoSense.ics43432Bytes2Sample(&micBuff[i]);
-      SoundEval.process(sample);
-    }
-  }
-}
-
-void onSoundEvalResult(float lEqPeriodDb) {
-  modbusSetLeqPrd(lEqPeriodDb);
-}
-
-// == Core 2: Modbus, sensors, I/O ================
+// == Core 1: Modbus, sensors, I/O ================
 
 unsigned long lastReadTs = 0;
 
-void setup1() {
+void setup() {
   watchdog_enable(2000, 1);
-  watchdog_update();
-  
+
   ExoSense.setup();
   loadConfig();
   attachInterrupt(digitalPinToInterrupt(EXOS_PIN_PIR), modbusPirIsr, RISING);
   modbusBegin(_cfgRegisters[MB_REG_CFG_OFFSET_MB_ADDR],
               _cfgRegisters[MB_REG_CFG_OFFSET_MB_BAUD],
               _cfgRegisters[MB_REG_CFG_OFFSET_MB_PARITY]);
-  
+
+  delay(1000);
+  watchdog_update();
+
   // Signal to other core setup done
   rp2040.fifo.push_nb(0);
   rp2040.fifo.push_nb(1);
@@ -95,7 +50,7 @@ void setup1() {
   digitalWrite(EXOS_PIN_BUZZER, HIGH);
 }
 
-void loop1() {
+void loop() {
   modbusProcess();
 
   if (configReset) {
@@ -110,7 +65,7 @@ void loop1() {
     readLux();
     lastReadTs = millis();
   }
-  
+
   if (_buzzEnabled && millis() - _buzzStart > _buzzTime) {
     digitalWrite(EXOS_PIN_BUZZER, LOW);
     _buzzEnabled = false;
@@ -152,7 +107,7 @@ void readLux() {
 void readTempRhVoc() {
   float humidity;
   float temperature;
-  
+
   uint16_t error = ExoSense.sht40.measureHighPrecision(temperature, humidity);
   if (error) {
     modbusSetRh(MB_REG_VAL_ERR);
@@ -173,12 +128,12 @@ void readTempRhVoc() {
       modbusSetTemperature(temperature);
     }
   }
-  
+
   uint16_t srawVoc;
   uint16_t compensationRh = SHT40_TICKS_FROM_PERCENT_RH(humidity);
   uint16_t compensationT = SHT40_TICKS_FROM_CELSIUS(temperature);
   error = ExoSense.sgp40.measureRawSignal(
-                          compensationRh, compensationT, srawVoc);      
+                          compensationRh, compensationT, srawVoc);
   if (error) {
     modbusSetVocRaw(MB_REG_VAL_ERR);
   } else {
@@ -186,4 +141,54 @@ void readTempRhVoc() {
     int32_t vocIdx = ExoSense.voc.process(srawVoc);
     modbusSetVocIdx(vocIdx);
   }
+}
+
+// == Core 2: Sound eval ================
+
+uint8_t micBuff[MIC_BUFF_SIZE];
+unsigned long micStartTs;
+bool micReady;
+
+void setup1() {
+  micReady = false;
+
+  // Wait for other core to setup
+  rp2040.fifo.pop();
+
+  ExoSense.ics43432Begin(I2S_INTERNAL_BUFFER_SIZE, SNDEV_SAMPLING_FREQ_HZ);
+  SoundEval.setMicSpecs(ICS43432_SENSITIVITY_DB, ICS43432_SAMPLE_VAL_MAX);
+  SoundEval.setPeriodResultCallback(onSoundEvalResult);
+  SoundEval.setTimeWeighting(_cfgRegisters[MB_REG_CFG_OFFSET_SND_TIME]);
+  SoundEval.setFreqWeighting(_cfgRegisters[MB_REG_CFG_OFFSET_SND_FREQ]);
+
+  digitalWrite(EXOS_PIN_BUZZER, LOW);
+
+  micStartTs = millis();
+}
+
+void loop1() {
+  // ping-pong with other core to update watchdog
+  uint32_t popped;
+  if (rp2040.fifo.pop_nb(&popped) && popped == 1) {
+    rp2040.fifo.push_nb(2);
+  }
+
+  int ret = ExoSense.ics43432.read(micBuff, MIC_BUFF_SIZE);
+  if (!micReady) {
+    // discard initial noise readings
+    if (millis() - micStartTs > 2000) {
+       micReady = true;
+    }
+    return;
+  }
+  if (ret > 0) {
+    for (int i = 0; i < ret; i += ICS43432_BYTES_PER_SAMPLE_FRAME) {
+      int32_t sample = ExoSense.ics43432Bytes2Sample(&micBuff[i]);
+      SoundEval.process(sample);
+    }
+  }
+}
+
+void onSoundEvalResult(float lEqPeriodDb) {
+  modbusSetLeqPrd(lEqPeriodDb);
 }

@@ -132,7 +132,7 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
       if (regAddr == 201 && qty == 1) {
         ModbusRtuSlave.responseAddBit(digitalRead(EXOS_PIN_DO1));
         return MB_RESP_OK;
-        
+
       } else if (regAddr == 501 && qty == 1) {
         ModbusRtuSlave.responseAddBit(digitalRead(EXOS_PIN_LED));
         return MB_RESP_OK;
@@ -144,7 +144,7 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
         bool on = ModbusRtuSlave.getDataCoil(function, data, 0);
         digitalWrite(EXOS_PIN_DO1, on ? HIGH : LOW);
         return MB_RESP_OK;
-        
+
       } else if (regAddr == 501) {
         bool on = ModbusRtuSlave.getDataCoil(function, data, 0);
         digitalWrite(EXOS_PIN_LED, on ? HIGH : LOW);
@@ -153,10 +153,14 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
       return MB_EX_ILLEGAL_DATA_ADDRESS;
 
     case MB_FC_READ_INPUT_REGISTER:
-      if (checkAddrRange(regAddr, qty, MB_REG_IN_START, MB_REG_IN_START + MB_REG_IN_OFFSET_MAX)) {
+      if (regAddr == 10 && qty == 1) {
+        ModbusRtuSlave.responseAddRegister(EXOS_MODBUS_RTU_VERSION);
+        return MB_RESP_OK;
+
+      } else if (checkAddrRange(regAddr, qty, MB_REG_IN_START, MB_REG_IN_START + MB_REG_IN_OFFSET_MAX)) {
         int offset = regAddr - MB_REG_IN_START;
         int offsetEnd = offset + qty;
-        
+
         bool rdLPMin = (MB_REG_IN_OFFSET_LEQ_PRD_MIN >= offset && MB_REG_IN_OFFSET_LEQ_PRD_MIN <= offsetEnd);
         bool rdLPMax = (MB_REG_IN_OFFSET_LEQ_PRD_MAX >= offset && MB_REG_IN_OFFSET_LEQ_PRD_MAX <= offsetEnd);
         bool rdLPAvg = (MB_REG_IN_OFFSET_LEQ_PRD_AVG >= offset && MB_REG_IN_OFFSET_LEQ_PRD_AVG <= offsetEnd);
@@ -166,7 +170,7 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
             return MB_EX_SERVER_DEVICE_BUSY;
           }
         }
-        
+
         for (int i = offset; i < offsetEnd; i++) {
           ModbusRtuSlave.responseAddRegister(_inputRegisters[i]);
         }
@@ -189,7 +193,7 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
         if (rdLPMin || rdLPMax || rdLPAvg) {
           mutex_exit(&_leqPrdMtx);
         }
-          
+
         return MB_RESP_OK;
       }
       return MB_EX_ILLEGAL_DATA_ADDRESS;
@@ -198,11 +202,11 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
       if (checkAddrRange(regAddr, qty, MB_REG_CFG_START, MB_REG_CFG_START + MB_REG_CFG_OFFSET_MAX)) {
         int offset = regAddr - MB_REG_CFG_START;
         int offsetEnd = offset + qty;
-        
+
         for (int i = offset; i < offsetEnd; i++) {
           ModbusRtuSlave.responseAddRegister(_cfgRegisters[i]);
         }
-        
+
         return MB_RESP_OK;
       }
       return MB_EX_ILLEGAL_DATA_ADDRESS;
@@ -219,7 +223,7 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
           digitalWrite(EXOS_PIN_DO1, LOW);
         }
         return MB_RESP_OK;
-      
+
       } else if (regAddr == 401 && qty == 1) {
         _buzzTime = 100 * ModbusRtuSlave.getDataRegister(function, data, 0);
         if (_buzzTime > 0) {
@@ -230,12 +234,12 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
           digitalWrite(EXOS_PIN_BUZZER, LOW);
         }
         return MB_RESP_OK;
-        
+
       } else if (checkAddrRange(regAddr, qty, MB_REG_CFG_START, MB_REG_CFG_START + MB_REG_CFG_OFFSET_MAX)) {
         int offset = regAddr - MB_REG_CFG_START;
         int offsetEnd = offset + qty;
         bool commit = false;
-        
+
         for (int i = offset; i < offsetEnd; i++) {
           word val = ModbusRtuSlave.getDataRegister(function, data, i - offset);
           switch (i) {
@@ -269,21 +273,17 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
         if (commit) {
           configCommit(_cfgRegisters, MB_REG_CFG_OFFSET_MAX + 1);
         }
-        
+
         return MB_RESP_OK;
       }
       return MB_EX_ILLEGAL_DATA_ADDRESS;
-      
+
     default:
       return MB_EX_ILLEGAL_FUNCTION;
   }
 }
 
 void modbusBegin(byte unitAddr, uint16_t baudIdx, uint16_t parity) {
-#if defined(ARDUINO_PICO_MAJOR) && defined(ARDUINO_PICO_MINOR) && (ARDUINO_PICO_MAJOR > 1 || (ARDUINO_PICO_MAJOR == 1 && ARDUINO_PICO_MINOR >= 11))
-  EXOS_RS485.setPollingMode(true);
-#endif
-
   uint16_t serCfg;
   switch (parity) {
     case 2:
@@ -322,7 +322,7 @@ void modbusBegin(byte unitAddr, uint16_t baudIdx, uint16_t parity) {
     default:
       baud = 9600;
   }
-  
+
   EXOS_RS485.begin(baud, serCfg);
   ModbusRtuSlave.setCallback(&modbusOnRequest);
   ModbusRtuSlave.begin(unitAddr, &EXOS_RS485, baud, EXOS_PIN_RS485_TXEN_N, true);

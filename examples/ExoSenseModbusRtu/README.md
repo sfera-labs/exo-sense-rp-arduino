@@ -50,4 +50,5 @@ Upon error or no data available, registers values are set to `0xFFFF` (for unsig
 |1003|R/W|3,6,16|16|unsigned short|-|New configuration - Modbus parity and stop bits:<br/>`1` = parity even, 1 stop bit<br/>`2` = parity odd, 1 stop bit<br/>`3` = parity none, 2 stop bits|
 |1004|R/W|3,6,16|16|unsigned short|-|New configuration - Sound evaluation time weighting:<br/>`1` = SLOW<br/>`2` = FAST<br/>`3` = IMPULSE|
 |1005|R/W|3,6,16|16|unsigned short|-|New configuration - Sound evaluation frequency weighting:<br/>`1` = A<br/>`2` = C<br/>`3` = Z|
+|1006|R/W|3,6,16|16|signed short|&deg;C/10|New configuration - Temperature offset used to compensate temperature and relative humidity measurements|
 

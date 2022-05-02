@@ -23,7 +23,13 @@ After installation you will see the example sketches under the menu *File* > *Ex
 Select "Generic RP2040" from the menu *Tools* > *Board* > *Raspberry Pi RP2040 Boards*.
 You will see additional menu entries under *Tools*, set Flash size to 16MB (with or without FS) and leave the other entries unchanged.
 
-The first time you upload a sketch, you will need to hold the BOOTSEL button down while plugging the USB cable connected to your computer, then release the BOOTSEL button.
+The **first** time you upload a sketch:
+- Remove power to Exo Sense RP
+- Connect the USB cable to Exo Sense RP
+- Connect a wire jumper to the BOOTSEL CN3 header
+- Turn on power supply to the Exo Sense RP
+- Remove the BOOTSEL jumper
+
 Hit the Arduino IDE's upload button, the sketch will be transferred and start to run.
 
 After the first upload, the board will appear under the standard Serial ports list and will automatically reset and switch to bootloader mode when hitting the IDE's upload button as with any other Arduino boards.

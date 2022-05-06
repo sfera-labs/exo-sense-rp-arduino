@@ -1,5 +1,5 @@
 /*
- * ExoSenseTempRhVoc.ino -
+ * ExoSenseInternalTemp.ino -
  *   Using Exo Sense RP's internal temperature sensors
  *
  *   Copyright (C) 2022 Sfera Labs S.r.l. - All rights reserved.

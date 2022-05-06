@@ -15,3 +15,4 @@
 #include "libs/sound-eval/kiss_fft/kiss_fft.c"
 #include "libs/sound-eval/kiss_fft/kiss_fftr.c"
 #include "libs/arduino-M2M_LM75A/src/M2M_LM75A.cpp"
+#include "libs/arduino-RTCx/src/RTCx.cpp"

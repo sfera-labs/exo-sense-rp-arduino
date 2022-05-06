@@ -76,6 +76,7 @@ class ExoSenseClass {
     I2SClass ics43432;
     M2M_LM75A lm75a_u9;
     M2M_LM75A lm75a_u16;
+    RTCx rtc;
 
     ExoSenseClass();
     void setup();

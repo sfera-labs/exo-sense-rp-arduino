@@ -26,3 +26,7 @@
 	path = libs/arduino-M2M_LM75A
 	url = https://github.com/sfera-labs/arduino-M2M_LM75A
 	branch = master
+[submodule "libs/arduino-RTCx"]
+	path = libs/arduino-RTCx
+	url = https://github.com/sfera-labs/arduino-RTCx
+	branch = master

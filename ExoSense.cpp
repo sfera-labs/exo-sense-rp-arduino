@@ -60,6 +60,8 @@ void ExoSenseClass::setup() {
 
   lm75a_u9 = M2M_LM75A(EXOS_I2C_ADDR_SENS_SYS_TEMP_U9);
   lm75a_u16 = M2M_LM75A(EXOS_I2C_ADDR_SENS_SYS_TEMP_U16);
+
+  rtc = RTCx(EXOS_I2C_ADDR_RTC, RTCx::MCP7941x);
 }
 
 void ExoSenseClass::rs485TxEn(bool enabled) {

@@ -30,6 +30,7 @@ void ExoSenseClass::setup() {
   gpio_disable_pulls(EXOS_PIN_DI2);
 
   pinMode(EXOS_PIN_LED, OUTPUT);
+  pinMode(EXOS_PIN_LED_GREEN_N, OUTPUT);
 
   pinMode(EXOS_PIN_BUZZER, OUTPUT);
 

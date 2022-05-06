@@ -58,8 +58,8 @@ void ExoSenseClass::setup() {
   ics43432.setWS(EXOS_PIN_I2S_WS);
   ics43432.setSD(EXOS_PIN_I2S_SD);
 
-  lm75a_u9 = M2M_LM75A(0x48);
-  lm75a_u16 = M2M_LM75A(0x49);
+  lm75a_u9 = M2M_LM75A(EXOS_I2C_ADDR_SENS_SYS_TEMP_U9);
+  lm75a_u16 = M2M_LM75A(EXOS_I2C_ADDR_SENS_SYS_TEMP_U16);
 }
 
 void ExoSenseClass::rs485TxEn(bool enabled) {

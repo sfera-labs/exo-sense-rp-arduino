@@ -74,6 +74,8 @@ class ExoSenseClass {
     SensirionI2CSgp40 sgp40;
     VOCGasIndexAlgorithm voc;
     I2SClass ics43432;
+    M2M_LM75A lm75a_u9;
+    M2M_LM75A lm75a_u16;
 
     ExoSenseClass();
     void setup();

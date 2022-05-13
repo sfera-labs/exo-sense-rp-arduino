@@ -44,7 +44,7 @@ Upon error or no data available, registers values are set to `0xFFFF` (for unsig
 |313|R|4|16|signed short|dB/10|[Sound evaluation *Leq*](https://github.com/sfera-labs/knowledge-base/blob/main/soundeval/equivalent-continuous-sound-level-leq.md) average value since last read (based on selected weightings configuration, see below)|
 |401|W|6,16|16|unsigned short|s/10|Buzzer beep with specified duration|
 |501|R/W|1,5|1|-|-|LED state|
-|1000|W|6,16|16|unsigned short|-|Write `0xABCD` (or modified value set in `CFG_COMMIT_VAL` in [config.h](config.h)) to commit the new configuration written in the registers below. This register can only be written individually, i.e. using function 6, or function 16 with a single data value. After positive response the unit is restarted and the new configuration is applyed|
+|1000|W|6,16|16|unsigned short|-|Write `0xABCD` (or modified value set in `CFG_COMMIT_VAL` in [config.h](config.h)) to commit the new configuration written in the registers below. This register can only be written individually, i.e. using function 6, or function 16 with a single data value. After positive response the unit is restarted and the new configuration is applied|
 |1001|R/W|3,6,16|16|unsigned short|-|New configuration - Modbus unit address|
 |1002|R/W|3,6,16|16|unsigned short|-|New configuration - Modbus baud rate:<br/>`1` = 1200<br/>`2` = 2400<br/>`3` = 4800<br/>`4` = 9600<br/>`5` = 19200<br/>`6` = 38400<br/>`7` = 57600<br/>`8` = 115200|
 |1003|R/W|3,6,16|16|unsigned short|-|New configuration - Modbus parity and stop bits:<br/>`1` = parity even, 1 stop bit<br/>`2` = parity odd, 1 stop bit<br/>`3` = parity none, 2 stop bits|

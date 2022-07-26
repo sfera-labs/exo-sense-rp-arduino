@@ -40,6 +40,7 @@ class SoundEvalClass {
     bool setTimeWeighting(int tw);
     void setPeriodResultCallback(SoundEvalCallback* cb);
     void process(int32_t sample);
+    float getPeriodDominantFrequency();
 };
 
 extern SoundEvalClass SoundEval;

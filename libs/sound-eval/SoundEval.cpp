@@ -43,6 +43,10 @@ static float _refPZ2 = pow(SNDEV_P_ZERO, 2);
 static float _refOnePa;
 static kiss_fft_cpx _fftOut[SNDEV_FFT_OUTPUT_SIZE];
 static kiss_fftr_cfg _fftCfg;
+static float _samplesMaxPwr;
+static float _samplesMaxPwrFreq;
+static float _periodMaxPwr;
+static float _periodMaxPwrFreq;
 
 static float _lEqBand[SNDEV_FREQ_BANDS];
 static float _lEqPeriodDb;
@@ -124,6 +128,8 @@ bool SoundEvalClass::setTimeWeighting(int tw) {
   _samplesBuffIdx = 0;
   _periodPower = 0;
   _periodPowerCnt = 0;
+  _periodMaxPwr = 0;
+  _periodMaxPwrFreq = -1;
   for (int i = 0; i < _samplesBuffMax; i++) {
     _windowFun[i] = (1.0 - cos(2.0 * M_PI * i / _samplesBuffMax)) * 0.5;
   }
@@ -154,12 +160,19 @@ static float getSamplesWeightedPower(float samplesPower, int samplesSize) {
   for (int i = 0; i < SNDEV_FREQ_BANDS; i++) {
     _freqBandPow[i] = 0;
   }
+  _samplesMaxPwr = 0;
+  _samplesMaxPwrFreq = -1;
 
   kiss_fftr(_fftCfg , _samplesBuff, _fftOut);
 
   for (int i = 0; i < samplesSize / 2 + 1; i++) {
     float freq = i / _samplesTimeSec;
     float freqPwr = (_fftOut[i].r * _fftOut[i].r) + (_fftOut[i].i * _fftOut[i].i);
+
+    if (freqPwr > _samplesMaxPwr) {
+      _samplesMaxPwr = freqPwr;
+      _samplesMaxPwrFreq = freq;
+    }
 
     if (freq <= SNDEV_SAMPLING_FREQ_HZ / 2) {
       if (freq > _weightingTable[freqBandIdx][SNDEV_FREQ_WEIGHTING_FREQ]) {
@@ -192,6 +205,11 @@ static void processSamples() {
   _periodPowerCnt += _samplesBuffMax;
   _periodPower += getSamplesWeightedPower(samplesPower, _samplesBuffMax);
 
+  if (_samplesMaxPwr >= _periodMaxPwr) {
+    _periodMaxPwr = _samplesMaxPwr;
+    _periodMaxPwrFreq = _samplesMaxPwrFreq;
+  }
+
   if (_periodPowerCnt >= _periodSampleSize) {
     _lEqPeriodDb = 10 * log10(_periodPower / _periodRounds);
     _periodPowerCnt = 0;
@@ -200,6 +218,9 @@ static void processSamples() {
     if (_periodCb != NULL) {
       _periodCb(_lEqPeriodDb);
     }
+
+    _periodMaxPwr = 0;
+    _periodMaxPwrFreq = -1;
   }
 }
 
@@ -209,6 +230,10 @@ void SoundEvalClass::process(int32_t sample) {
     processSamples();
     _samplesBuffIdx = 0;
   }
+}
+
+float SoundEvalClass::getPeriodDominantFrequency() {
+  return _periodMaxPwrFreq;
 }
 
 SoundEvalClass SoundEval;

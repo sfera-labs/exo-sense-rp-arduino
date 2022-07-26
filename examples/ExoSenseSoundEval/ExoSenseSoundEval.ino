@@ -75,7 +75,11 @@ void loop() {
 }
 
 void onPeriodResult(float lEqPeriodDb) {
-  Serial.print("Leq period: ");
+  Serial.print("Period Leq: ");
   Serial.print(lEqPeriodDb);
   Serial.println(" dB");
+
+  Serial.print("Period dominant frequency: ");
+  Serial.print(SoundEval.getPeriodDominantFrequency());
+  Serial.println(" Hz");
 }

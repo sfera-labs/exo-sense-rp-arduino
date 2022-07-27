@@ -1,5 +1,5 @@
 // == Modbus unit address: 1-247 ==
-#define CFG_MB_UNIT_ADDDR   10
+#define CFG_MB_UNIT_ADDDR   1
 
 // == Modbus baudrate (bit/s) ==
 //#define CFG_MB_BAUDRATE     1 // 1200

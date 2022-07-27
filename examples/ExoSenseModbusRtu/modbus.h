@@ -238,17 +238,21 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
       } else if (checkAddrRange(regAddr, qty, MB_REG_CFG_START, MB_REG_CFG_START + MB_REG_CFG_OFFSET_MAX)) {
         int offset = regAddr - MB_REG_CFG_START;
         int offsetEnd = offset + qty;
-        bool commit = false;
 
         for (int i = offset; i < offsetEnd; i++) {
           word val = ModbusRtuSlave.getDataRegister(function, data, i - offset);
           switch (i) {
             case MB_REG_CFG_OFFSET_COMMIT:
-              if (qty != 1 || val != CFG_COMMIT_VAL) {
-                return MB_EX_ILLEGAL_DATA_VALUE;
+              if (qty == 1) {
+                if (val == CFG_COMMIT_VAL) {
+                  configCommit(_cfgRegisters, MB_REG_CFG_OFFSET_MAX + 1);
+                  return MB_RESP_OK;
+                } else if (val == CFG_RESET_VAL) {
+                  configResetToDefaults();
+                  return MB_RESP_OK;
+                }
               }
-              commit = true;
-              break;
+              return MB_EX_ILLEGAL_DATA_VALUE;
             case MB_REG_CFG_OFFSET_MB_ADDR:
               if (val < 1 || val > 247) {
                 return MB_EX_ILLEGAL_DATA_VALUE;
@@ -268,10 +272,6 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
               break;
           }
           _cfgRegisters[i] = val;
-        }
-
-        if (commit) {
-          configCommit(_cfgRegisters, MB_REG_CFG_OFFSET_MAX + 1);
         }
 
         return MB_RESP_OK;

@@ -15,7 +15,7 @@
  *
  */
 
-#define EXOS_MODBUS_RTU_VERSION 0x0100
+#define EXOS_MODBUS_RTU_VERSION 0x0200
 
 #include <ExoSense.h>
 #include "config.h"
@@ -93,6 +93,7 @@ void loadConfig() {
     _cfgRegisters[MB_REG_CFG_OFFSET_SND_FREQ] = CFG_SNDEV_FREQ_WEIGHTING;
     _cfgRegisters[MB_REG_CFG_OFFSET_TMP_OFF] = CFG_TEMP_OFFSET;
   }
+  _cfgRegisters[MB_REG_CFG_OFFSET_COMMIT] = CFG_COMMIT_VAL;
 }
 
 void readLux() {

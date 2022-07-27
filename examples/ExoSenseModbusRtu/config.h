@@ -33,6 +33,10 @@
 // (change it to invalidate currently saved configuration)
 #define CFG_COMMIT_VAL      0xabcd
 
+// == Value to be written in modbus register to reset config ==
+// (seti it equal to CFG_COMMIT_VAL to disable reset)
+#define CFG_RESET_VAL      0x1234
+
 
 #include <EEPROM.h>
 
@@ -51,6 +55,13 @@ void configCommit(uint16_t* data, uint8_t len) {
   EEPROM.write(1, checksum);
   EEPROM.commit();
 
+  configReset = true;
+}
+
+void configResetToDefaults() {
+  EEPROM.write(0, 0);
+  EEPROM.write(1, 0);
+  EEPROM.commit();
   configReset = true;
 }
 

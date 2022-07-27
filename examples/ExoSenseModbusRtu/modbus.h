@@ -1,4 +1,5 @@
 #include <ModbusRtuSlave.h>
+#include <pico/unique_id.h>
 
 #define MB_REG_IN_START                300
 #define MB_REG_IN_OFFSET_TEMP          1
@@ -194,6 +195,15 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
           mutex_exit(&_leqPrdMtx);
         }
 
+        return MB_RESP_OK;
+
+      } else if (regAddr == 601 && qty == 4) {
+        pico_unique_board_id_t id;
+        pico_get_unique_board_id(&id);
+        for (int i = 0; i < 8; i+=2) {
+          word idw = (id.id[i] & 0xff) | ((id.id[i + 1] & 0xff) << 8);
+          ModbusRtuSlave.responseAddRegister(idw);
+        }
         return MB_RESP_OK;
       }
       return MB_EX_ILLEGAL_DATA_ADDRESS;

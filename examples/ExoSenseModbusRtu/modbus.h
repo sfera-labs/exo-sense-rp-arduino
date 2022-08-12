@@ -205,6 +205,12 @@ byte modbusOnRequest(byte unitAddr, byte function, word regAddr, word qty, byte 
           ModbusRtuSlave.responseAddRegister(idw);
         }
         return MB_RESP_OK;
+
+      } else if (regAddr == 605 && qty == 2) {
+        unsigned long ts = millis();
+        ModbusRtuSlave.responseAddRegister((ts >> 16) & 0xffff);
+        ModbusRtuSlave.responseAddRegister(ts & 0xffff);
+        return MB_RESP_OK;
       }
       return MB_EX_ILLEGAL_DATA_ADDRESS;
 

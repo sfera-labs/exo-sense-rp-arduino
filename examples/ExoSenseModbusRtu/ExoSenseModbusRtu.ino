@@ -15,7 +15,7 @@
  *
  */
 
-#define EXOS_MODBUS_RTU_VERSION 0x0200
+#define EXOS_MODBUS_RTU_VERSION 0x0300
 
 #include <ExoSense.h>
 #include "config.h"

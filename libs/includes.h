@@ -4,7 +4,6 @@
 #include "libs/arduino-i2c-sht4x/src/SensirionI2CSht4x.h"
 #include "libs/arduino-i2c-sgp40/src/SensirionI2CSgp40.h"
 #include "libs/arduino-gas-index-algorithm/src/VOCGasIndexAlgorithm.h"
-#include "libs/arduino-pico-i2s-audio/src/I2S.h"
 #include "libs/sound-eval/SoundEval.h"
 #include "libs/arduino-M2M_LM75A/src/M2M_LM75A.h"
 #include "libs/arduino-RTCx/src/RTCx.h"

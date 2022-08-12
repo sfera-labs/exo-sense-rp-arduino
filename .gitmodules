@@ -18,10 +18,6 @@
 	path = libs/arduino-gas-index-algorithm
 	url = https://github.com/sfera-labs/arduino-gas-index-algorithm
 	branch = master
-[submodule "libs/arduino-pico-i2s-audio"]
-	path = libs/arduino-pico-i2s-audio
-	url = https://github.com/sfera-labs/arduino-pico-i2s-audio
-	branch = master
 [submodule "libs/arduino-M2M_LM75A"]
 	path = libs/arduino-M2M_LM75A
 	url = https://github.com/sfera-labs/arduino-M2M_LM75A

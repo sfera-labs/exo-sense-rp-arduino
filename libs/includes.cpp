@@ -10,7 +10,6 @@
 #include "libs/arduino-core/src/SensirionShdlcTxFrame.cpp"
 #include "libs/arduino-core/src/SensirionI2CCommunication.cpp"
 #include "libs/arduino-core/src/SensirionI2CTxFrame.cpp"
-#include "libs/arduino-pico-i2s-audio/src/I2S.cpp"
 #include "libs/sound-eval/SoundEval.cpp"
 #include "libs/sound-eval/kiss_fft/kiss_fft.c"
 #include "libs/sound-eval/kiss_fft/kiss_fftr.c"

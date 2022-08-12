@@ -22,9 +22,6 @@
 #include "modbus.h"
 #include "hardware/watchdog.h"
 
-#define MIC_BUFF_SIZE (1000 * ICS43432_BYTES_PER_SAMPLE_FRAME)
-#define I2S_INTERNAL_BUFFER_SIZE (MIC_BUFF_SIZE * 10)
-
 
 // == Core 1: Modbus, sensors, I/O ================
 
@@ -40,14 +37,13 @@ void setup() {
               _cfgRegisters[MB_REG_CFG_OFFSET_MB_BAUD],
               _cfgRegisters[MB_REG_CFG_OFFSET_MB_PARITY]);
 
-  delay(1000);
   watchdog_update();
+
+  digitalWrite(EXOS_PIN_BUZZER, HIGH);
 
   // Signal to other core setup done
   rp2040.fifo.push_nb(0);
   rp2040.fifo.push_nb(1);
-
-  digitalWrite(EXOS_PIN_BUZZER, HIGH);
 }
 
 void loop() {
@@ -146,9 +142,9 @@ void readTempRhVoc() {
 
 // == Core 2: Sound eval ================
 
-uint8_t micBuff[MIC_BUFF_SIZE];
 unsigned long micStartTs;
 bool micReady;
+int micSample;
 
 void setup1() {
   micReady = false;
@@ -156,7 +152,8 @@ void setup1() {
   // Wait for other core to setup
   rp2040.fifo.pop();
 
-  ExoSense.ics43432Begin(I2S_INTERNAL_BUFFER_SIZE, SNDEV_SAMPLING_FREQ_HZ);
+  ExoSense.ics43432.setBuffers(10, 1000);
+  ExoSense.ics43432.begin(SNDEV_SAMPLING_FREQ_HZ);
   SoundEval.setMicSpecs(ICS43432_SENSITIVITY_DB, ICS43432_SAMPLE_VAL_MAX);
   SoundEval.setPeriodResultCallback(onSoundEvalResult);
   SoundEval.setTimeWeighting(_cfgRegisters[MB_REG_CFG_OFFSET_SND_TIME]);
@@ -174,7 +171,7 @@ void loop1() {
     rp2040.fifo.push_nb(2);
   }
 
-  int ret = ExoSense.ics43432.read(micBuff, MIC_BUFF_SIZE);
+  micSample = ExoSense.ics43432.read();
   if (!micReady) {
     // discard initial noise readings
     if (millis() - micStartTs > 2000) {
@@ -182,12 +179,7 @@ void loop1() {
     }
     return;
   }
-  if (ret > 0) {
-    for (int i = 0; i < ret; i += ICS43432_BYTES_PER_SAMPLE_FRAME) {
-      int32_t sample = ExoSense.ics43432Bytes2Sample(&micBuff[i]);
-      SoundEval.process(sample);
-    }
-  }
+  SoundEval.process(micSample);
 }
 
 void onSoundEvalResult(float lEqPeriodDb) {

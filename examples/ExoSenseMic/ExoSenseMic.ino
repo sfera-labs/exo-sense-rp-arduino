@@ -11,37 +11,27 @@
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  * See file LICENSE.txt for further informations on licensing terms.
+ * 
+ * Usage: upload the sketch, then open Tools > Serial Plotter
  *
  */
 
 #include <ExoSense.h>
 
-#define I2S_INTERNAL_BUFFER_SIZE 40000
 #define SAMPLING_RATE_HZ 44100
-#define APP_BUFFER_SIZE 10000
-
-uint8_t buff[APP_BUFFER_SIZE];
 
 void setup() {
   Serial.begin(9600);
   ExoSense.setup();
   while (!Serial) ;
-  if (!ExoSense.ics43432Begin(I2S_INTERNAL_BUFFER_SIZE, SAMPLING_RATE_HZ)) {
-    Serial.println("Microphone setup error");
+  if (!ExoSense.ics43432.begin(SAMPLING_RATE_HZ)) {
+    Serial.println("Microphone begin error");
     while (true) ;
   }
   Serial.println("Ready");
 }
 
 void loop() {
-  int ret = ExoSense.ics43432.read(buff, APP_BUFFER_SIZE);
-  if (ret < 0) {
-    Serial.print("Microphone read error: ");
-    Serial.println(ret);
-    delay(1000);
-    return;
-  }
-  Serial.print("Read ");
-  Serial.print(ret);
-  Serial.println(" bytes");
+  int sample = ExoSense.ics43432.read();
+  Serial.println(sample);
 }

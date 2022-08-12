@@ -16,6 +16,7 @@
 #ifndef ExoSense_h
 #define ExoSense_h
 
+#include <I2S.h>
 #include "libs/includes.h"
 
 #define EXOS_PIN_DI1 28
@@ -67,13 +68,20 @@
 #define ICS43432_BYTES_PER_SAMPLE_FRAME (ICS43432_SAMPLE_FRAME_BITS / 8)
 #define ICS43432_SENSITIVITY_DB (-26)
 
+class I2SW: public I2S {
+  using I2S::I2S;
+  public:
+    bool begin(long);
+    int read();
+};
+
 class ExoSenseClass {
   public:
     ClosedCube_OPT3001 opt3001;
     SensirionI2CSht4x sht40;
     SensirionI2CSgp40 sgp40;
     VOCGasIndexAlgorithm voc;
-    I2SClass ics43432;
+    I2SW ics43432;
     M2M_LM75A lm75a_u9;
     M2M_LM75A lm75a_u16;
     RTCx rtc;
@@ -83,8 +91,6 @@ class ExoSenseClass {
     void rs485TxEn(bool enabled);
     void temperatureOffsetCompensate(float tempOffset,
               float* temperature, float* rh);
-    bool ics43432Begin(int bufferSize, long sampleRate);
-    int32_t ics43432Bytes2Sample(uint8_t* bytes);
 };
 
 extern ExoSenseClass ExoSense;

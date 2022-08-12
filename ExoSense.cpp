@@ -55,9 +55,10 @@ void ExoSenseClass::setup() {
   sht40.begin(Wire);
   sgp40.begin(Wire);
 
-  ics43432.setSCK(EXOS_PIN_I2S_SCK);
-  ics43432.setWS(EXOS_PIN_I2S_WS);
-  ics43432.setSD(EXOS_PIN_I2S_SD);
+  ics43432 = I2SW(INPUT);
+  ics43432.setBCLK(EXOS_PIN_I2S_SCK);
+  ics43432.setDATA(EXOS_PIN_I2S_SD);
+  ics43432.setBitsPerSample(ICS43432_SAMPLE_FRAME_BITS);
 
   lm75a_u9 = M2M_LM75A(EXOS_I2C_ADDR_SENS_SYS_TEMP_U9);
   lm75a_u16 = M2M_LM75A(EXOS_I2C_ADDR_SENS_SYS_TEMP_U16);
@@ -78,21 +79,23 @@ void ExoSenseClass::temperatureOffsetCompensate(float tempOffset,
   }
 }
 
-bool ExoSenseClass::ics43432Begin(int bufferSize, long sampleRate) {
-  if (!ics43432.setBufferSize(bufferSize)) {
-    return false;
-  }
-  return ics43432.begin(I2S_MODE_MONO, sampleRate, ICS43432_SAMPLE_FRAME_BITS);
+bool I2SW::begin(long sampleRate) {
+// workaround for I2S bug:
+// https://github.com/earlephilhower/arduino-pico/pull/728
+#if ARDUINO_PICO_MAJOR < 2 || \
+    (ARDUINO_PICO_MAJOR == 2 && ARDUINO_PICO_MINOR < 3) || \
+    (ARDUINO_PICO_MAJOR == 2 && ARDUINO_PICO_MINOR == 3 && ARDUINO_PICO_REVISION <= 3)
+  sampleRate *= 2;
+#endif
+  return I2S::begin(sampleRate);
 }
 
-int32_t ExoSenseClass::ics43432Bytes2Sample(uint8_t* bytes) {
-  int32_t sample = (unsigned int) bytes[3] * 65536
-                 + (unsigned int) bytes[2] * 256
-                 + (unsigned int) bytes[1];
-  if ((sample & 0x800000) == 0x800000) {
-    sample |= 0xff000000;
+int I2SW::read() {
+  int32_t l, r;
+  if (!I2S::read32(&l, &r)) {
+    return 0;
   }
-  return sample;
+  return l >> 8;
 }
 
 ExoSenseClass ExoSense;

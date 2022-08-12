@@ -16,20 +16,20 @@
 
 #include <ExoSense.h>
 
-#define BUFF_SIZE (1000 * ICS43432_BYTES_PER_SAMPLE_FRAME)
-#define I2S_INTERNAL_BUFFER_SIZE (BUFF_SIZE * 10)
-
-uint8_t buffBytes[BUFF_SIZE];
-
 void setup() {
   bool ok;
   Serial.begin(9600);
   while (!Serial) ;
   
   ExoSense.setup();
-  
-  if (!ExoSense.ics43432Begin(I2S_INTERNAL_BUFFER_SIZE, SNDEV_SAMPLING_FREQ_HZ)) {
+
+  if (!ExoSense.ics43432.setBuffers(10, 1000)) {
     Serial.println("Microphone setup error");
+    while (true) ;
+  }
+
+  if (!ExoSense.ics43432.begin(SNDEV_SAMPLING_FREQ_HZ)) {
+    Serial.println("Microphone begin error");
     while (true) ;
   }
 
@@ -62,16 +62,7 @@ void setup() {
 }
 
 void loop() {
-  int ret = ExoSense.ics43432.read(buffBytes, BUFF_SIZE);
-  if (ret > 0) {
-    for (int i = 0; i < ret; i += ICS43432_BYTES_PER_SAMPLE_FRAME) {
-      int32_t sample = ExoSense.ics43432Bytes2Sample(&buffBytes[i]);
-      SoundEval.process(sample);
-    }
-  } else {
-    Serial.print("Microphone read error: ");
-    Serial.println(ret);
-  }
+  SoundEval.process(ExoSense.ics43432.read());
 }
 
 void onPeriodResult(float lEqPeriodDb) {

@@ -11,8 +11,8 @@ https://github.com/earlephilhower/arduino-pico
 
 ## Library installation
 
+- Download this repo with: `git clone --depth 1 --recursive https://github.com/sfera-labs/exo-sense-rp-arduino`
 - Open the Arduino IDE
-- Download this repo: `git clone --depth 1 --recursive https://github.com/sfera-labs/exo-sense-rp-arduino`
 - Go to the menu *Sketch* > *Include Library* > *Add .ZIP Library...*
 - Select the downloaded folder
 

@@ -10,3 +10,5 @@
 - [ExoSenseTempRhVoc](./ExoSenseTempRhVoc): read and process data from the temperature, humidity and air quality (VOC) sensors
 - [ExoSenseRs485Echo](./ExoSenseRs485Echo): read and write data on the RS-485 interface
 - [ExoSenseModbusRtu](./ExoSenseModbusRtu): turn Exo Sense RP into a standard Modbus RTU slave device with access to all its functionalities over RS-485
+- [ExoSenseRtc](./ExoSenseRtc): configure and use the optional Real Time Clock (RTC)
+- [ExoSenseInternalTemp](./ExoSenseInternalTemp): read and process data from the internal temperature sensors
